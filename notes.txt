@@ -1,0 +1,8 @@
+DOMESTIC:
+Line2 visibility - TRUE if address line 2 has a value, FALSE otherwise
+Need shipping address line 3 - combo of city, state, zip
+sort csv by city alphabetically
+
+INTL:
+IntlShippingAddressLine1 - combo of line 1 & line 2
+IntlShippingAddressLine2 - combo of city/state/zip(postal code)
