@@ -3,16 +3,14 @@ import time
 from datetime import datetime as dt
 import csv
 from services.stripeService import StripeService
+from config import constants
 
 
-PRODUCT_FILTER = "Catdroool Club"
-FORMAT_STRING = "%Y-%m-%d"
-
-date_str = dt.now().strftime(FORMAT_STRING)
+date_str = dt.now().strftime(constants.FORMAT_STRING)
 
 key = ''
 
-products = stripe.Product.search(api_key=key, query=f"name~'{PRODUCT_FILTER}'")
+products = stripe.Product.search(api_key=key, query=f"name~'{constants.PRODUCT_FILTER}'")
 catdrool_product_codes = [p['id'] for p in products]
 
 subscriptions = []

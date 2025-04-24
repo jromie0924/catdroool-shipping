@@ -12,7 +12,7 @@ class StripeService:
 
   def get_customer(self, customer_id: str) -> dict:
     #TODO
-    if not self._api_key:
-      raise NoApiKeyException("API key not available")
+    pass
     
-  
+  def search_products(self, query) -> dict:
+    return stripe.Product.search(api_key=self._api_key, query=query)
