@@ -2,7 +2,7 @@ import stripe
 import time
 from datetime import datetime as dt
 import csv
-import json
+from services.stripeService import StripeService
 
 
 PRODUCT_FILTER = "Catdroool Club"
