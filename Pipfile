@@ -5,6 +5,9 @@ name = "pypi"
 
 [packages]
 stripe = "*"
+boto3 = "*"
+cryptography = "*"
+psycopg2-binary = "*"
 
 [dev-packages]
 
