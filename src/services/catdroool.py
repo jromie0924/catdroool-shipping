@@ -63,8 +63,6 @@ class Catdroool:
     #   customers_intl = json.load(file)
 
 
-        
-
     shipping_records_domestic: list[dict] = []
     shipping_records_intl: list[dict] = []
     directory = f'output/{self._date_str}/'
