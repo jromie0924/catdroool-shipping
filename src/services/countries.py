@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Union
 import os
 import psycopg2
@@ -6,6 +7,9 @@ import psycopg2
 from common.singleton import Singleton
 from config import config
 from services.aws import Aws
+
+
+logger = logging.getLogger(config.APP_NAME)
 
 class Countries(Singleton):
   def __init__(self):
@@ -22,7 +26,9 @@ class Countries(Singleton):
                                   user=connection_fields.get('username'),
                                   password=connection_fields.get('password'),
                                   host=connection_fields.get('host'),
-                                  port=connection_fields.get('port'))
+                                  port=connection_fields.get('port'),
+                                  )
+    self._conn.autocommit = True
   
   def get_country_name_from_id(self, country_code: str) -> Union[str, None]:
     sql_file = os.path.join(self._sql_path, 'get_country_name_by_code.sql')
@@ -31,11 +37,14 @@ class Countries(Singleton):
     with open(sql_file, 'r') as file:
       sql = file.read()
     
-    cursor = self._conn.cursor()
-    cursor.execute(sql, (country_code,))
-    result = cursor.fetchone() # GRANT SELECT ON TABLE countries TO catdroool;
-    cursor.close()
-    return result[0] if result else None
+    try:
+      cursor = self._conn.cursor()
+      cursor.execute(sql, (country_code,))
+      result = cursor.fetchone() # GRANT SELECT ON TABLE countries TO catdroool;
+      cursor.close()
+      return result[0] if result else None
+    except Exception as e:
+      logger.error(f"Failed to access the database: {e}")
   
   def get_state_code_by_country_code_state_code(self, country_code: str, state_code: str) -> str:
     if not state_code:
@@ -49,12 +58,15 @@ class Countries(Singleton):
     
     with open(sql_file, 'r') as file:
       sql = file.read()
-      
-    cursor = self._conn.cursor()
-    cursor.execute(sql, (country_code, state_code,))
-    result = cursor.fetchone()
-    cursor.close()
-    return result[0] if result else None
+    
+    try:
+      cursor = self._conn.cursor()
+      cursor.execute(sql, (country_code, state_code,))
+      result = cursor.fetchone()
+      cursor.close()
+      return result[0] if result else None
+    except Exception as e:
+      logger.error(f"Failed to access the database: {e}")
   
   def get_state_code_by_country_code_state_name(self, country_code: str, state_name: str) -> str:
     if not state_name:

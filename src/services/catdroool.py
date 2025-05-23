@@ -9,9 +9,12 @@ import stripe
 
 from config import config
 from datetime import datetime as dt
+from exceptions.addressNotFoundException import AddressNotFoundException
+from common import utils
 from models.error import ErrorCollection
 from services.aws import Aws
 from services.countries import Countries
+from services.domestics import Domestics
 
 
 logger = logging.getLogger(config.APP_NAME)
@@ -24,6 +27,7 @@ class Catdroool:
     self._date_str = dt.now().strftime(config.DATE_FORMAT_STRING)
     self._countries = Countries()
     self._error_collection = ErrorCollection()
+    self._domestics = Domestics()
     
   def generate_report(self):
     products = stripe.Product.search(api_key=self._stripe_api_key, query=f"name~'{config.PRODUCT_FILTER}'")
@@ -76,19 +80,16 @@ class Catdroool:
     
     for customer in customers_domestic:
       try:
+        
         shipping_info = customer['shipping']['address'] if customer['shipping'] and customer['shipping']['address'] else {}
-        line_2_visibility: bool = bool(shipping_info.get('line2'))
-        record = {
-          "CardName": customer.get('name'),
-          "ShippingName": customer.get('shipping').get('name'),
-          "ShippingAddressLine1": shipping_info.get('line1'),
-          "ShippingAddressLine2": shipping_info.get('line2'),
-          "#Line2Visibility": f"{line_2_visibility}",
-          "ShippingAddressCity": shipping_info.get('city'),
-          "ShippingAddressState": shipping_info.get('state'),
-          "ShippingAddressPostalCode": shipping_info.get('postal_code'),
-          "ShippingAddressLine3": f"{shipping_info.get('city')} {shipping_info.get('state')} {shipping_info.get('postal_code')}"
-        }
+        usps_verified_address = self._domestics.validate_address(address_1=shipping_info.get("line1"),
+                                                                 address_2=shipping_info.get("line2"),
+                                                                 city=shipping_info.get("city"),
+                                                                 zip=shipping_info.get("postal_code"),
+                                                                 state=shipping_info.get("state"))
+
+        record = utils.populate_shipment_record(customer=customer, usps_verified_address=usps_verified_address)
+        
         if not keys_domestic:
           keys_domestic = record.keys()
         shipping_records_domestic.append(record)
@@ -97,9 +98,12 @@ class Catdroool:
           self._error_collection.add_new(customer_id=customer['id'],
                                issue="Customer shipping information missing.",
                                nationality="DOMESTIC")
-        
+      except AddressNotFoundException as e:
+        logger.error(f"Address information for customer {customer['id']} was not identified by USPS.")
+        self._error_collection.add_new(customer_id=customer['id'], issue="Address information not identified by USPS.", nationality="DOMESTIC")
       except Exception as e:
         logger.error(f"failed on customer: {customer['id']}")
+        self._error_collection.add_new(customer_id=customer['id'], issue="An error occured when processing this customer.", nationality="DOMESTIC")
     with open(filename_domestic, 'w') as f:
       writer = csv.DictWriter(f, fieldnames=keys_domestic)
       writer.writeheader()
@@ -142,6 +146,7 @@ class Catdroool:
         
       except Exception as e:
         logger.error(f"failed on customer: {customer['id']}")
+        self._error_collection.add_new(customer_id=customer['id'], issue="An error occured when processing this customer.", nationality="INTERNATIONAL")
     with open(filename_intl, 'w') as f:
       writer = csv.DictWriter(f, fieldnames=keys_intl)
       writer.writeheader()
