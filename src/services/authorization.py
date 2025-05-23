@@ -65,6 +65,14 @@ class Authorization(Singleton):
         issued_at = response_payload['issued_at']
         expires_in = response_payload['expires_in'] * 1000 # convert to milliseconds
         
+        '''
+        subtract 10 minutes from the expiration window to go ahead and request another token if it's close to expiration
+        This way we don't run as high a risk of the token expiring while the app is running.
+        '''
+        buffer = 10 * 60 * 1000 # 10 minutes converted to milliseconds.
+        expires_in -= buffer
+        
+        
         self._usps_api_token_cache['token'] = access_token
         self._usps_api_token_cache['expiration'] = issued_at + expires_in
         logger.info(f"Successfully retrieved USPS access token. Expires in {'{:.2f}'.format(expires_in / 1000 / 60 / 60)} hours.")
