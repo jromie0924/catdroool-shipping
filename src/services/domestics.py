@@ -38,6 +38,9 @@ class Domestics(Singleton):
     response = requests.request("GET", url=self._url, headers=headers, params=params)
     if response.status_code == HTTPStatus.OK:
       payload: dict = response.json()
-      return payload.get("address")
+      address = payload.get("address")
+      if not address:
+        raise AddressNotFoundException(f"Address not found")
+      return address
     
     raise AddressNotFoundException(f"Address not found")

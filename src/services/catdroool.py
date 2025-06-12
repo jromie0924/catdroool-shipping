@@ -101,7 +101,7 @@ class Catdroool:
                                issue="Customer shipping information missing.",
                                nationality="DOMESTIC")
       except AddressNotFoundException as e:
-        logger.error(f"Address information for customer {customer['id']} was not identified by USPS.")
+        logger.error(f"Address information for customer {customer['id']} was not recognized by USPS.")
         self._error_collection.add_new(customer_id=customer['id'], issue="Address information not identified by USPS.", nationality="DOMESTIC")
       except Exception as e:
         logger.error(f"failed on customer: {customer['id']}")
@@ -131,12 +131,12 @@ class Catdroool:
           "CardName": customer.get('name'),
           "ShippingName": customer.get('shipping').get('name'),
           "ShippingAddressLine1": shipping_info.get('line1'),
-          "ShippingAddressLine2": shipping_info.get('line2'),
+          "ShippingAddressLine2": shipping_info.get('line2') or "",
           "IntlShippingAddressLine1": f"{shipping_info.get('line1')}, {shipping_info.get('line2') or ''}",
           "ShippingAddressCity": shipping_info.get('city'),
           "shippingAddressState": state,
-          "ShippingAddressPostalCode": shipping_info.get('postal_code'),
-          "IntlShippingAddressLine2": f"{shipping_info.get('city')}\t{state or ''}\t{shipping_info.get('postal_code')}",
+          "ShippingAddressPostalCode": shipping_info.get('postal_code') or "",
+          "IntlShippingAddressLine2": f"{shipping_info.get('city')} {state or ''} {shipping_info.get('postal_code')}",
           "ShippingCountry": country
         }
         if not keys_intl:
