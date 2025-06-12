@@ -15,6 +15,7 @@ from models.error import ErrorCollection
 from services.aws import Aws
 from services.countries import Countries
 from services.domestics import Domestics
+from services.emailer import Emailer
 
 
 logger = logging.getLogger(config.APP_NAME)
@@ -28,6 +29,7 @@ class Catdroool:
     self._countries = Countries()
     self._error_collection = ErrorCollection()
     self._domestics = Domestics()
+    self._emailer = Emailer()
     
   def generate_report(self):
     products = stripe.Product.search(api_key=self._stripe_api_key, query=f"name~'{config.PRODUCT_FILTER}'")
@@ -158,3 +160,5 @@ class Catdroool:
       writer.writerows(self._error_collection.errors)
 
     logger.info(f"Records written to {filename_intl}")
+    
+    # TODO: Distribute the three files via the Emailer class.
