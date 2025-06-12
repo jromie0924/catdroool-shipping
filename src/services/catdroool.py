@@ -72,9 +72,12 @@ class Catdroool:
     shipping_records_domestic: list[dict] = []
     shipping_records_intl: list[dict] = []
     directory = f'output/{self._date_str}/'
-    filename_domestic = f'{directory}Catdrool-shipping-record_domestic_{self._date_str}.csv'
-    filename_intl = f'{directory}Catdrool-shipping-record_international_{self._date_str}.csv'
-    filename_error = f'{directory}Catdrool-shipping-errors_{self._date_str}.csv'
+    filename_domestic = f'Catdrool-shipping-record_domestic_{self._date_str}.csv'
+    filename_intl = f'Catdrool-shipping-record_international_{self._date_str}.csv'
+    filename_error = f'Catdrool-shipping-errors_{self._date_str}.csv'
+    filepath_domestic = f'{directory}{filename_domestic}'
+    filepath_intl = f'{directory}{filename_intl}'
+    filepath_error = f'{directory}{filename_error}'
     keys_domestic: list[str] = []
     keys_intl: list[str] = []
     
@@ -161,4 +164,26 @@ class Catdroool:
 
     logger.info(f"Records written to {filename_intl}")
     
-    # TODO: Distribute the three files via the Emailer class.
+    message = f'''
+    Notification email for {self._date_str}
+    
+    Completed mailing list processing. Domestic, international, and error files have been attached.
+    
+    Best,
+    Catdroool In Da Cloud
+    '''
+    file_list = [
+      {
+        "name": filename_domestic,
+        "path": filepath_domestic
+      },
+      {
+        "name": filename_intl,
+        "path": filepath_intl
+      },
+      {
+        "name": filename_error,
+        "path": filepath_error
+      }
+    ]
+    self._emailer.send_email(body_text=message, files=file_list, date_stamp=self._date_str)

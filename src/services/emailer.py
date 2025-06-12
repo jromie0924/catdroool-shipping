@@ -8,6 +8,8 @@ from email.mime.multipart import MIMEMultipart
 
 from config import config
 from services.aws import Aws
+from email.mime.base import MIMEBase
+from email import encoders
 
 
 logger = logging.getLogger(config.APP_NAME)
@@ -27,16 +29,30 @@ class Emailer():
     except Exception as e:
       logger.error(f"Failed to retrieve email credentials and metadata: {e}")
     
-  def send_email(self, files: list[str]):
-    
+  def send_email(self, body_text: str="", files: list[dict]=None, date_stamp=""):
     message = MIMEMultipart()
     message['From'] = self._sender_email
-    message['To'] = self._recipients
-    message['Subject'] = "test email from catdroool"
+    message['To'] = ", ".join(self._recipients)
+    message['Subject'] = f'{config.EMAIL_SUBJECT} {date_stamp}'
     
-    body = "testing testing"
-    
-    message.attach(MIMEText(body, 'plain'))
+    message.attach(MIMEText(body_text, 'plain'))
+    if files:
+      for file_info in files:
+        file_path = file_info.get("path")
+        file_name = file_info.get("name")
+        if file_path and file_name:
+          try:
+            with open(file_path, "rb") as f:
+              part = MIMEBase("application", "octet-stream")
+              part.set_payload(f.read())
+            encoders.encode_base64(part)
+            part.add_header(
+              "Content-Disposition",
+              f'attachment; filename="{file_name}"',
+            )
+            message.attach(part)
+          except Exception as e:
+            logger.error(f"Failed to attach file {file_name}: {e}")
     
     
     try:

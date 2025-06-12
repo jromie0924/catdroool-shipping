@@ -33,3 +33,6 @@ CRYPT_TTL_DAYS = 90
 # Database
 DATABASE_SERVER = 'tolfmachine'
 DATABASE_NAME = 'world'
+
+# Email
+EMAIL_SUBJECT = "Catdroool Shipping Lists"
