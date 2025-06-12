@@ -134,7 +134,7 @@ class Catdroool:
           "ShippingAddressCity": shipping_info.get('city'),
           "shippingAddressState": state,
           "ShippingAddressPostalCode": shipping_info.get('postal_code'),
-          "IntlShippingAddressLine2": f"{shipping_info.get('city')}\t{state or ''}\t{shipping_info.get('postal_code')}",
+          "IntlShippingAddressLine2": f"{shipping_info.get('city')} {state or ''} {shipping_info.get('postal_code')}",
           "ShippingCountry": country
         }
         if not keys_intl:
