@@ -1,3 +1,4 @@
+import json
 import logging
 import smtplib
 
@@ -19,7 +20,7 @@ class Emailer():
     self._aws = Aws()
     
     try:
-      email_secrets: dict = self._aws.get_secret(key="catdroool_email_secrets", type=str)
+      email_secrets: dict = json.loads(self._aws.get_secret(key="catdroool_email_secrets", type=str))
       self._sender_email: str = email_secrets.get("sender_email")
       self._sender_password: str = email_secrets.get("sender_password")
       self._recipients: list[str] = email_secrets.get("recipients").split(",")
