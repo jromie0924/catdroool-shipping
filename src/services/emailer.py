@@ -30,6 +30,9 @@ class Emailer():
       logger.error(f"Failed to retrieve email credentials and metadata: {e}")
     
   def send_email(self, body_text: str="", files: list[dict]=None, date_stamp=""):
+    if not config.EMAILS_ENABLED:
+      return
+    
     message = MIMEMultipart()
     message['From'] = self._sender_email
     message['To'] = ", ".join(self._recipients)
