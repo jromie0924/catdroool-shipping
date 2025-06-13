@@ -2,10 +2,12 @@ APP_NAME = "catdroool_shipping_reports"
 LOGGING_LEVEL = "INFO"
 LOG_FILE = "logs/catdrool.log"
 API_TOKEN_CACHE_FILE = 'cache/api_tokens.bin'
+EMAILS_ENABLED = True
 
 PRODUCT_FILTER = "Catdroool Club"
 INTERNATIONAL_FILTER = "International"
 DATE_FORMAT_STRING = "%Y-%m-%d"
+DATETIME_FORMAT_STRING = "%Y-%m-%dT%H:%M:%S"
 TIMESTAMP = 'timestamp'
 
 CACHE_TIMEOUT = 24 # hours
@@ -32,3 +34,7 @@ CRYPT_TTL_DAYS = 90
 # Database
 DATABASE_SERVER = 'tolfmachine'
 DATABASE_NAME = 'world'
+
+# Email
+DELIVERY_EMAIL_SUBJECT = "Catdroool Shipping Lists"
+NOTIFICATION_EMAIL_SUBJECT = "Catdroool Shipping Startup Notification"
