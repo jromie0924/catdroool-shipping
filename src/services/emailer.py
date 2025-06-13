@@ -7,6 +7,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 from config import config
+from models import emailType as EMAIL_TYPE
 from services.aws import Aws
 from email.mime.base import MIMEBase
 from email import encoders
@@ -25,20 +26,26 @@ class Emailer():
       email_secrets: dict = json.loads(self._aws.get_secret(key="catdroool_email_secrets", type=str))
       self._sender_email: str = email_secrets.get("sender_email")
       self._sender_password: str = email_secrets.get("sender_password")
-      self._recipients: list[str] = email_secrets.get("recipients").split(",")
+      self._recipients: str = email_secrets.get("recipients")
+      self._notification_recipients: str = email_secrets.get("notification_recipients")
     except Exception as e:
       logger.error(f"Failed to retrieve email credentials and metadata: {e}")
     
-  def send_email(self, body_text: str="", files: list[dict]=None, date_stamp=""):
+  def send_email(self, body_html: str="", files: list[dict]=None, date_stamp="", subject="", email_type=EMAIL_TYPE.DELIVERY):
     if not config.EMAILS_ENABLED:
       return
     
     message = MIMEMultipart()
     message['From'] = self._sender_email
-    message['To'] = ", ".join(self._recipients)
-    message['Subject'] = f'{config.EMAIL_SUBJECT} {date_stamp}'
+    # message['To'] = self._recipients if email_type == EMAIL_TYPE.DELIVERY else
+    if email_type == EMAIL_TYPE.DELIVERY:
+      message['To'] = self._recipients
+    elif email_type == EMAIL_TYPE.NOTIFICATION:
+      message['To'] = self._notification_recipients
+    message['Subject'] = f'{subject} {date_stamp}'
     
-    message.attach(MIMEText(body_text, 'plain'))
+    
+    message.attach(MIMEText(body_html, 'html'))
     if files:
       for file_info in files:
         file_path = file_info.get("path")
@@ -63,9 +70,6 @@ class Emailer():
       server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
       server.ehlo()
       server.login(self._sender_email, self._sender_password)
-      
-      # server.starttls()
-      # server.login(sender_email, password=password)
       
       text = message.as_string()
       server.sendmail(self._sender_email, self._recipients, text)
