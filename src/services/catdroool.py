@@ -11,10 +11,12 @@ from config import config
 from datetime import datetime as dt
 from exceptions.addressNotFoundException import AddressNotFoundException
 from common import utils
+from models import emailType as EMAIL_TYPE
 from models.error import ErrorCollection
 from services.aws import Aws
 from services.countries import Countries
 from services.domestics import Domestics
+from services.emailer import Emailer
 
 
 logger = logging.getLogger(config.APP_NAME)
@@ -25,9 +27,19 @@ class Catdroool:
     key_dict = json.loads(self._aws.get_secret(key=config.STRIPE_SECRET_KEY, type=str))
     self._stripe_api_key = key_dict.get(config.STRIPE_SECRET_KEY)
     self._date_str = dt.now().strftime(config.DATE_FORMAT_STRING)
+    self._datetime_str = dt.now().strftime(config.DATETIME_FORMAT_STRING)
     self._countries = Countries()
     self._error_collection = ErrorCollection()
     self._domestics = Domestics()
+    self._emailer = Emailer()
+    
+    self.send_startup_notification()
+    
+  def send_startup_notification(self):
+    with open("html/notification_email.html", "r") as f:
+      message = f.read()
+    
+    self._emailer.send_email(body_html=message, date_stamp=self._datetime_str, subject=config.NOTIFICATION_EMAIL_SUBJECT, email_type=EMAIL_TYPE.NOTIFICATION)
     
   def generate_report(self):
     logger.info("Generating report...")
@@ -74,9 +86,12 @@ class Catdroool:
     shipping_records_domestic: list[dict] = []
     shipping_records_intl: list[dict] = []
     directory = f'output/{self._date_str}/'
-    filename_domestic = f'{directory}Catdrool-shipping-record_domestic_{self._date_str}.csv'
-    filename_intl = f'{directory}Catdrool-shipping-record_international_{self._date_str}.csv'
-    filename_error = f'{directory}Catdrool-shipping-errors_{self._date_str}.csv'
+    filename_domestic = f'Catdrool-shipping-record_domestic_{self._date_str}.csv'
+    filename_intl = f'Catdrool-shipping-record_international_{self._date_str}.csv'
+    filename_error = f'Catdrool-shipping-errors_{self._date_str}.csv'
+    filepath_domestic = f'{directory}{filename_domestic}'
+    filepath_intl = f'{directory}{filename_intl}'
+    filepath_error = f'{directory}{filename_error}'
     keys_domestic: list[str] = []
     keys_intl: list[str] = []
     
@@ -162,3 +177,22 @@ class Catdroool:
       writer.writerows(self._error_collection.errors)
 
     logger.info(f"Records written to {filename_intl}")
+    
+    with open("html/delivery_email.html", "r") as f:
+      message: str = f.read()
+    
+    file_list = [
+      {
+        "name": filename_domestic,
+        "path": filepath_domestic
+      },
+      {
+        "name": filename_intl,
+        "path": filepath_intl
+      },
+      {
+        "name": filename_error,
+        "path": filepath_error
+      }
+    ]
+    self._emailer.send_email(body_html=message, files=file_list, date_stamp=self._date_str, subject=config.DELIVERY_EMAIL_SUBJECT, email_type=EMAIL_TYPE.DELIVERY)

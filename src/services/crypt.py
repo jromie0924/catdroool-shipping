@@ -9,9 +9,6 @@ class Crypt(Singleton):
       return None
     self._initialized = True
     self._aws = Aws()
-    
-  def generate_key(self):
-    return Fernet.generate_key()
   
   def get_key(self) -> bytes:
     key = self._aws.get_secret(key=config.CRYPT_SECRET_NAME, type=bytes)
