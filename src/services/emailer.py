@@ -71,7 +71,7 @@ class Emailer():
       server.login(self._sender_email, self._sender_password)
       
       text = message.as_string()
-      server.sendmail(self._sender_email, message['To'], text)
+      server.sendmail(self._sender_email, message['To'].split(","), text)
       server.quit()
       print("email sent successfully")
       
