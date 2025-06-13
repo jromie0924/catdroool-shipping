@@ -7,7 +7,6 @@ RemainAfterExit=no
 ExecStart=/home/jackson/projects/catdrool-shipping/scripts/catdroool-startup
 Restart=no
 User=jackson
-group=jackson
 
 [Install]
 WantedBy=multi-user.target
