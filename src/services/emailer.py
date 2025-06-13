@@ -26,7 +26,7 @@ class Emailer():
       email_secrets: dict = json.loads(self._aws.get_secret(key="catdroool_email_secrets", type=str))
       self._sender_email: str = email_secrets.get("sender_email")
       self._sender_password: str = email_secrets.get("sender_password")
-      self._recipients: str = email_secrets.get("recipients")
+      self._delivery_recipients: str = email_secrets.get("delivery_recipients")
       self._notification_recipients: str = email_secrets.get("notification_recipients")
     except Exception as e:
       logger.error(f"Failed to retrieve email credentials and metadata: {e}")
@@ -38,7 +38,7 @@ class Emailer():
     message = MIMEMultipart()
     message['From'] = self._sender_email
     if email_type == EMAIL_TYPE.DELIVERY:
-      message['To'] = self._recipients
+      message['To'] = self._delivery_recipients
     elif email_type == EMAIL_TYPE.NOTIFICATION:
       message['To'] = self._notification_recipients
     message['Subject'] = f'{subject} {date_stamp}'
