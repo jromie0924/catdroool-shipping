@@ -30,41 +30,45 @@ class Catdroool:
     self._domestics = Domestics()
     
   def generate_report(self):
-    products = stripe.Product.search(api_key=self._stripe_api_key, query=f"name~'{config.PRODUCT_FILTER}'")
-    catdrool_product_codes_domestic = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() not in p.get('name').lower()]
-    catdrool_product_codes_intl = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() in p.get('name').lower()]
+    logger.info("Generating report...")
+    # products = stripe.Product.search(api_key=self._stripe_api_key, query=f"name~'{config.PRODUCT_FILTER}'")
+    # catdrool_product_codes_domestic = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() not in p.get('name').lower()]
+    # catdrool_product_codes_intl = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() in p.get('name').lower()]
 
-    subscriptions = []
-    subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active')
-    subscriptions.extend(subs['data'])
-    while subs.has_more:
-      time.sleep(0.05) # rate limit
-      starts_after = subs['data'][-1]['id']
-      subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active', starting_after=starts_after)
-      subscriptions.extend(subs['data'])
+    # subscriptions = []
+    # subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active')
+    # subscriptions.extend(subs['data'])
+    # while subs.has_more:
+    #   time.sleep(0.05) # rate limit
+    #   starts_after = subs['data'][-1]['id']
+    #   subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active', starting_after=starts_after)
+    #   subscriptions.extend(subs['data'])
       
 
-    customers_domestic: list[dict] = []
-    customers_intl: list[dict] = []
+    # customers_domestic: list[dict] = []
+    # customers_intl: list[dict] = []
 
-    for sub in subscriptions:
-      product_codes_domestic = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdrool_product_codes_domestic]
-      product_codes_intl = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdrool_product_codes_intl]
-      if len(product_codes_domestic):
-        cust_id = sub['customer']
-        customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
-        customers_domestic.append(customer)
-        time.sleep(0.05) # rate limit
-      if len(product_codes_intl):
-        cust_id = sub.get('customer')
-        customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
-        customers_intl.append(customer)
+    # for sub in subscriptions:
+    #   product_codes_domestic = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdrool_product_codes_domestic]
+    #   product_codes_intl = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdrool_product_codes_intl]
+    #   if len(product_codes_domestic):
+    #     cust_id = sub['customer']
+    #     customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
+    #     customers_domestic.append(customer)
+    #     time.sleep(0.05) # rate limit
+    #   if len(product_codes_intl):
+    #     cust_id = sub.get('customer')
+    #     customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
+    #     customers_intl.append(customer)
     
-    # with open('customers_domestic.json', 'r') as file:
-    #   customers_domestic = json.load(file)
+    with open('customers_domestic.json', 'r') as file:
+      customers_domestic = json.load(file)
       
-    # with open("customers_intl.json", "r") as file:
-    #   customers_intl = json.load(file)
+    with open("customers_intl.json", "r") as file:
+      customers_intl = json.load(file)
+      
+    logger.info(f"Number of domestic customers retireved from Stripe: {len(customers_domestic)}")
+    logger.info(f"Number of international customers retireved from Stripe: {len(customers_intl)}")
 
 
     shipping_records_domestic: list[dict] = []
