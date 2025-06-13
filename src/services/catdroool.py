@@ -42,36 +42,35 @@ class Catdroool:
     self._emailer.send_email(body_html=message, date_stamp=self._datetime_str, subject=config.NOTIFICATION_EMAIL_SUBJECT, email_type=EMAIL_TYPE.NOTIFICATION)
     
   def generate_report(self):
-    time.sleep(10)
-    # products = stripe.Product.search(api_key=self._stripe_api_key, query=f"name~'{config.PRODUCT_FILTER}'")
-    # catdrool_product_codes_domestic = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() not in p.get('name').lower()]
-    # catdrool_product_codes_intl = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() in p.get('name').lower()]
+    products = stripe.Product.search(api_key=self._stripe_api_key, query=f"name~'{config.PRODUCT_FILTER}'")
+    catdrool_product_codes_domestic = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() not in p.get('name').lower()]
+    catdrool_product_codes_intl = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() in p.get('name').lower()]
 
-    # subscriptions = []
-    # subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active')
-    # subscriptions.extend(subs['data'])
-    # while subs.has_more:
-    #   time.sleep(0.05) # rate limit
-    #   starts_after = subs['data'][-1]['id']
-    #   subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active', starting_after=starts_after)
-    #   subscriptions.extend(subs['data'])
+    subscriptions = []
+    subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active')
+    subscriptions.extend(subs['data'])
+    while subs.has_more:
+      time.sleep(0.05) # rate limit
+      starts_after = subs['data'][-1]['id']
+      subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active', starting_after=starts_after)
+      subscriptions.extend(subs['data'])
       
 
-    # customers_domestic: list[dict] = []
-    # customers_intl: list[dict] = []
+    customers_domestic: list[dict] = []
+    customers_intl: list[dict] = []
 
-    # for sub in subscriptions:
-    #   product_codes_domestic = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdrool_product_codes_domestic]
-    #   product_codes_intl = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdrool_product_codes_intl]
-    #   if len(product_codes_domestic):
-    #     cust_id = sub['customer']
-    #     customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
-    #     customers_domestic.append(customer)
-    #     time.sleep(0.05) # rate limit
-    #   if len(product_codes_intl):
-    #     cust_id = sub.get('customer')
-    #     customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
-    #     customers_intl.append(customer)
+    for sub in subscriptions:
+      product_codes_domestic = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdrool_product_codes_domestic]
+      product_codes_intl = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdrool_product_codes_intl]
+      if len(product_codes_domestic):
+        cust_id = sub['customer']
+        customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
+        customers_domestic.append(customer)
+        time.sleep(0.05) # rate limit
+      if len(product_codes_intl):
+        cust_id = sub.get('customer')
+        customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
+        customers_intl.append(customer)
     
     # with open('customers_domestic.json', 'r') as file:
     #   customers_domestic = json.load(file)
@@ -92,88 +91,88 @@ class Catdroool:
     keys_domestic: list[str] = []
     keys_intl: list[str] = []
     
-    # os.makedirs(os.path.dirname(directory), exist_ok=True)
+    os.makedirs(os.path.dirname(directory), exist_ok=True)
     
-    # for customer in customers_domestic:
-    #   try:
+    for customer in customers_domestic:
+      try:
         
-    #     shipping_info = customer['shipping']['address'] if customer['shipping'] and customer['shipping']['address'] else {}
-    #     usps_verified_address = self._domestics.validate_address(address_1=shipping_info.get("line1"),
-    #                                                              address_2=shipping_info.get("line2"),
-    #                                                              city=shipping_info.get("city"),
-    #                                                              zip=shipping_info.get("postal_code"),
-    #                                                              state=shipping_info.get("state"))
+        shipping_info = customer['shipping']['address'] if customer['shipping'] and customer['shipping']['address'] else {}
+        usps_verified_address = self._domestics.validate_address(address_1=shipping_info.get("line1"),
+                                                                 address_2=shipping_info.get("line2"),
+                                                                 city=shipping_info.get("city"),
+                                                                 zip=shipping_info.get("postal_code"),
+                                                                 state=shipping_info.get("state"))
 
-    #     record = utils.populate_shipment_record(customer=customer, usps_verified_address=usps_verified_address)
+        record = utils.populate_shipment_record(customer=customer, usps_verified_address=usps_verified_address)
         
-    #     if not keys_domestic:
-    #       keys_domestic = record.keys()
-    #     shipping_records_domestic.append(record)
+        if not keys_domestic:
+          keys_domestic = record.keys()
+        shipping_records_domestic.append(record)
         
-    #     if not shipping_info:
-    #       self._error_collection.add_new(customer_id=customer['id'],
-    #                            issue="Customer shipping information missing.",
-    #                            nationality="DOMESTIC")
-    #   except AddressNotFoundException as e:
-    #     logger.error(f"Address information for customer {customer['id']} was not recognized by USPS.")
-    #     self._error_collection.add_new(customer_id=customer['id'], issue="Address information not identified by USPS.", nationality="DOMESTIC")
-    #   except Exception as e:
-    #     logger.error(f"failed on customer: {customer['id']}")
-    #     self._error_collection.add_new(customer_id=customer['id'], issue="An error occured when processing this customer.", nationality="DOMESTIC")
-    # with open(filename_domestic, 'w') as f:
-    #   writer = csv.DictWriter(f, fieldnames=keys_domestic)
-    #   writer.writeheader()
-    #   writer.writerows(shipping_records_domestic)
+        if not shipping_info:
+          self._error_collection.add_new(customer_id=customer['id'],
+                               issue="Customer shipping information missing.",
+                               nationality="DOMESTIC")
+      except AddressNotFoundException as e:
+        logger.error(f"Address information for customer {customer['id']} was not recognized by USPS.")
+        self._error_collection.add_new(customer_id=customer['id'], issue="Address information not identified by USPS.", nationality="DOMESTIC")
+      except Exception as e:
+        logger.error(f"failed on customer: {customer['id']}")
+        self._error_collection.add_new(customer_id=customer['id'], issue="An error occured when processing this customer.", nationality="DOMESTIC")
+    with open(filename_domestic, 'w') as f:
+      writer = csv.DictWriter(f, fieldnames=keys_domestic)
+      writer.writeheader()
+      writer.writerows(shipping_records_domestic)
 
-    # logger.info(f"Records written to {filename_domestic}")
+    logger.info(f"Records written to {filename_domestic}")
 
 
-    # for customer in customers_intl:
-    #   try:
-    #     shipping_info = customer['shipping']['address'] if customer['shipping'] and customer['shipping']['address'] else {}
-    #     country = self._countries.get_country_name_from_id(country_code = shipping_info.get('country'))
-    #     state = ""
-    #     if shipping_info["state"]:
-    #       if self._countries.get_state_code_by_country_code_state_code(country_code=shipping_info.get("country"), state_code=shipping_info["state"]):
-    #         state = shipping_info["state"]
-    #       else:
-    #         self._error_collection.add_new(customer_id=customer['id'],
-    #                              issue=f"Shipping state code {shipping_info["state"]} is not registered in world database for the country of {country}.",
-    #                              nationality="INTERNATIONAL")
+    for customer in customers_intl:
+      try:
+        shipping_info = customer['shipping']['address'] if customer['shipping'] and customer['shipping']['address'] else {}
+        country = self._countries.get_country_name_from_id(country_code = shipping_info.get('country'))
+        state = ""
+        if shipping_info["state"]:
+          if self._countries.get_state_code_by_country_code_state_code(country_code=shipping_info.get("country"), state_code=shipping_info["state"]):
+            state = shipping_info["state"]
+          else:
+            self._error_collection.add_new(customer_id=customer['id'],
+                                 issue=f"Shipping state code {shipping_info["state"]} is not registered in world database for the country of {country}.",
+                                 nationality="INTERNATIONAL")
 
-    #     record = {
-    #       "CardName": customer.get('name'),
-    #       "ShippingName": customer.get('shipping').get('name'),
-    #       "ShippingAddressLine1": shipping_info.get('line1'),
-    #       "ShippingAddressLine2": shipping_info.get('line2') or "",
-    #       "IntlShippingAddressLine1": f"{shipping_info.get('line1')}, {shipping_info.get('line2') or ''}",
-    #       "ShippingAddressCity": shipping_info.get('city'),
-    #       "shippingAddressState": state,
-    #       "ShippingAddressPostalCode": shipping_info.get('postal_code') or "",
-    #       "IntlShippingAddressLine2": f"{shipping_info.get('city')} {state or ''} {shipping_info.get('postal_code')}",
-    #       "ShippingCountry": country
-    #     }
-    #     if not keys_intl:
-    #       keys_intl = record.keys()
-    #     shipping_records_intl.append(record)
+        record = {
+          "CardName": customer.get('name'),
+          "ShippingName": customer.get('shipping').get('name'),
+          "ShippingAddressLine1": shipping_info.get('line1'),
+          "ShippingAddressLine2": shipping_info.get('line2') or "",
+          "IntlShippingAddressLine1": f"{shipping_info.get('line1')}, {shipping_info.get('line2') or ''}",
+          "ShippingAddressCity": shipping_info.get('city'),
+          "shippingAddressState": state,
+          "ShippingAddressPostalCode": shipping_info.get('postal_code') or "",
+          "IntlShippingAddressLine2": f"{shipping_info.get('city')} {state or ''} {shipping_info.get('postal_code')}",
+          "ShippingCountry": country
+        }
+        if not keys_intl:
+          keys_intl = record.keys()
+        shipping_records_intl.append(record)
         
-    #     if not shipping_info:
-    #       self._error_collection.add_new(customer_id=customer['id'], issue="Customer shipping information missing.", nationality='INTERNATIONAL')
+        if not shipping_info:
+          self._error_collection.add_new(customer_id=customer['id'], issue="Customer shipping information missing.", nationality='INTERNATIONAL')
         
-    #   except Exception as e:
-    #     logger.error(f"failed on customer: {customer['id']}")
-    #     self._error_collection.add_new(customer_id=customer['id'], issue="An error occured when processing this customer.", nationality="INTERNATIONAL")
-    # with open(filename_intl, 'w') as f:
-    #   writer = csv.DictWriter(f, fieldnames=keys_intl)
-    #   writer.writeheader()
-    #   writer.writerows(shipping_records_intl)
+      except Exception as e:
+        logger.error(f"failed on customer: {customer['id']}")
+        self._error_collection.add_new(customer_id=customer['id'], issue="An error occured when processing this customer.", nationality="INTERNATIONAL")
+    with open(filename_intl, 'w') as f:
+      writer = csv.DictWriter(f, fieldnames=keys_intl)
+      writer.writeheader()
+      writer.writerows(shipping_records_intl)
       
-    # with open(filename_error, 'w') as file:
-    #   writer = csv.DictWriter(file, fieldnames=ErrorCollection.FIELD_NAMES)
-    #   writer.writeheader()
-    #   writer.writerows(self._error_collection.errors)
+    with open(filename_error, 'w') as file:
+      writer = csv.DictWriter(file, fieldnames=ErrorCollection.FIELD_NAMES)
+      writer.writeheader()
+      writer.writerows(self._error_collection.errors)
 
-    # logger.info(f"Records written to {filename_intl}")
+    logger.info(f"Records written to {filename_intl}")
     
     with open("html/delivery_email.html", "r") as f:
       message: str = f.read()
