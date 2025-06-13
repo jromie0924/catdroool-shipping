@@ -83,17 +83,17 @@ class Catdroool:
     # logger.info(f"Number of international customers retireved from Stripe: {len(customers_intl)}")
 
 
-    # shipping_records_domestic: list[dict] = []
-    # shipping_records_intl: list[dict] = []
-    # directory = f'output/{self._date_str}/'
-    # filename_domestic = f'Catdrool-shipping-record_domestic_{self._date_str}.csv'
-    # filename_intl = f'Catdrool-shipping-record_international_{self._date_str}.csv'
-    # filename_error = f'Catdrool-shipping-errors_{self._date_str}.csv'
-    # filepath_domestic = f'{directory}{filename_domestic}'
-    # filepath_intl = f'{directory}{filename_intl}'
-    # filepath_error = f'{directory}{filename_error}'
-    # keys_domestic: list[str] = []
-    # keys_intl: list[str] = []
+    shipping_records_domestic: list[dict] = []
+    shipping_records_intl: list[dict] = []
+    directory = f'output/{self._date_str}/'
+    filename_domestic = f'Catdrool-shipping-record_domestic_{self._date_str}.csv'
+    filename_intl = f'Catdrool-shipping-record_international_{self._date_str}.csv'
+    filename_error = f'Catdrool-shipping-errors_{self._date_str}.csv'
+    filepath_domestic = f'{directory}{filename_domestic}'
+    filepath_intl = f'{directory}{filename_intl}'
+    filepath_error = f'{directory}{filename_error}'
+    keys_domestic: list[str] = []
+    keys_intl: list[str] = []
     
     # os.makedirs(os.path.dirname(directory), exist_ok=True)
     
