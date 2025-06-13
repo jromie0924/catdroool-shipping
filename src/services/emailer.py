@@ -73,7 +73,7 @@ class Emailer():
       text = message.as_string()
       server.sendmail(self._sender_email, message['To'].split(","), text)
       server.quit()
-      print("email sent successfully")
+      logger.info(f"{email_type} email sent successfully")
       
     except Exception as e:
       logger.error(f"Error sending email: {e}")

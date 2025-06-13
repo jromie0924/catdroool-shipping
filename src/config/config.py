@@ -1,6 +1,6 @@
 APP_NAME = "catdroool_shipping_reports"
 LOGGING_LEVEL = "INFO"
-LOG_FILE = "logs/catdrool.log"
+LOG_FILE = "logs/catdroool.log"
 API_TOKEN_CACHE_FILE = 'cache/api_tokens.bin'
 EMAILS_ENABLED = True
 
@@ -36,5 +36,5 @@ DATABASE_SERVER = 'tolfmachine'
 DATABASE_NAME = 'world'
 
 # Email
-DELIVERY_EMAIL_SUBJECT = "Catdroool Shipping Lists"
+DELIVERY_EMAIL_SUBJECT = "Catdroool Shipping File Delivery"
 NOTIFICATION_EMAIL_SUBJECT = "Catdroool Shipping Startup Notification"

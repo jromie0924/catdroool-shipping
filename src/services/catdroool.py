@@ -42,8 +42,8 @@ class Catdroool:
   def generate_report(self):
     logger.info("Generating report...")
     products = stripe.Product.search(api_key=self._stripe_api_key, query=f"name~'{config.PRODUCT_FILTER}'")
-    catdrool_product_codes_domestic = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() not in p.get('name').lower()]
-    catdrool_product_codes_intl = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() in p.get('name').lower()]
+    catdroool_product_codes_domestic = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() not in p.get('name').lower()]
+    catdroool_product_codes_intl = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() in p.get('name').lower()]
 
     subscriptions = []
     subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active')
@@ -59,8 +59,8 @@ class Catdroool:
     customers_intl: list[dict] = []
 
     for sub in subscriptions:
-      product_codes_domestic = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdrool_product_codes_domestic]
-      product_codes_intl = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdrool_product_codes_intl]
+      product_codes_domestic = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdroool_product_codes_domestic]
+      product_codes_intl = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdroool_product_codes_intl]
       if len(product_codes_domestic):
         cust_id = sub['customer']
         customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
@@ -84,9 +84,9 @@ class Catdroool:
     shipping_records_domestic: list[dict] = []
     shipping_records_intl: list[dict] = []
     directory = f'output/{self._date_str}/'
-    filename_domestic = f'Catdrool-shipping-record_domestic_{self._date_str}.csv'
-    filename_intl = f'Catdrool-shipping-record_international_{self._date_str}.csv'
-    filename_error = f'Catdrool-shipping-errors_{self._date_str}.csv'
+    filename_domestic = f'Catdroool-shipping-record_domestic_{self._date_str}.csv'
+    filename_intl = f'Catdroool-shipping-record_international_{self._date_str}.csv'
+    filename_error = f'Catdroool-shipping-errors_{self._date_str}.csv'
     filepath_domestic = f'{directory}{filename_domestic}'
     filepath_intl = f'{directory}{filename_intl}'
     filepath_error = f'{directory}{filename_error}'
@@ -121,7 +121,7 @@ class Catdroool:
       except Exception as e:
         logger.error(f"failed on customer: {customer['id']}")
         self._error_collection.add_new(customer_id=customer['id'], issue="An error occured when processing this customer.", nationality="DOMESTIC")
-    with open(filename_domestic, 'w') as f:
+    with open(filepath_domestic, 'w') as f:
       writer = csv.DictWriter(f, fieldnames=keys_domestic)
       writer.writeheader()
       writer.writerows(shipping_records_domestic)
@@ -164,12 +164,12 @@ class Catdroool:
       except Exception as e:
         logger.error(f"failed on customer: {customer['id']}")
         self._error_collection.add_new(customer_id=customer['id'], issue="An error occured when processing this customer.", nationality="INTERNATIONAL")
-    with open(filename_intl, 'w') as f:
+    with open(filepath_intl, 'w') as f:
       writer = csv.DictWriter(f, fieldnames=keys_intl)
       writer.writeheader()
       writer.writerows(shipping_records_intl)
       
-    with open(filename_error, 'w') as file:
+    with open(filepath_error, 'w') as file:
       writer = csv.DictWriter(file, fieldnames=ErrorCollection.FIELD_NAMES)
       writer.writeheader()
       writer.writerows(self._error_collection.errors)
