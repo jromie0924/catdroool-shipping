@@ -37,7 +37,6 @@ class Emailer():
     
     message = MIMEMultipart()
     message['From'] = self._sender_email
-    # message['To'] = self._recipients if email_type == EMAIL_TYPE.DELIVERY else
     if email_type == EMAIL_TYPE.DELIVERY:
       message['To'] = self._recipients
     elif email_type == EMAIL_TYPE.NOTIFICATION:
@@ -72,7 +71,7 @@ class Emailer():
       server.login(self._sender_email, self._sender_password)
       
       text = message.as_string()
-      server.sendmail(self._sender_email, self._recipients, text)
+      server.sendmail(self._sender_email, message['To'].split(","), text)
       server.quit()
       print("email sent successfully")
       

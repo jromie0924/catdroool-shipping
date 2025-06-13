@@ -1,5 +1,3 @@
-
-
 import csv
 import json
 import logging
@@ -42,6 +40,7 @@ class Catdroool:
     self._emailer.send_email(body_html=message, date_stamp=self._datetime_str, subject=config.NOTIFICATION_EMAIL_SUBJECT, email_type=EMAIL_TYPE.NOTIFICATION)
     
   def generate_report(self):
+    logger.info("Generating report...")
     products = stripe.Product.search(api_key=self._stripe_api_key, query=f"name~'{config.PRODUCT_FILTER}'")
     catdrool_product_codes_domestic = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() not in p.get('name').lower()]
     catdrool_product_codes_intl = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() in p.get('name').lower()]
@@ -77,6 +76,9 @@ class Catdroool:
       
     # with open("customers_intl.json", "r") as file:
     #   customers_intl = json.load(file)
+      
+    logger.info(f"Number of domestic customers retireved from Stripe: {len(customers_domestic)}")
+    logger.info(f"Number of international customers retireved from Stripe: {len(customers_intl)}")
 
 
     shipping_records_domestic: list[dict] = []

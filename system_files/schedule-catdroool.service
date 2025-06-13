@@ -1,0 +1,12 @@
+[Unit]
+Description=A job to start the catdroool reports
+
+[Service]
+Type=simple
+RemainAfterExit=no
+ExecStart=/home/jackson/projects/catdrool-shipping/scripts/catdroool-startup
+Restart=no
+User=jackson
+
+[Install]
+WantedBy=multi-user.target

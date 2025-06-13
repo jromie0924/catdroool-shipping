@@ -1,5 +1,4 @@
 import logging
-import os
 import csv
 import boto3
 
@@ -9,12 +8,12 @@ from config import config
 logger = logging.getLogger(config.APP_NAME)
 
 class Aws(Singleton):
-  def __init__(self):
+  def __init__(self, aws_secret_loc: str=""):
     if hasattr(self, '_initialized'):
       return None
     self._initialized = True
     self._region = config.AWS_REGION
-    aws_access_file = f"{os.environ.get("AWS_SECRET")}/{config.AWS_ACCESS_KEY_FILENAME}"
+    aws_access_file = f"{aws_secret_loc}/{config.AWS_ACCESS_KEY_FILENAME}"
     try:
       with open(aws_access_file, encoding="utf-8-sig") as f:
         reader = csv.reader(f)

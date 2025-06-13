@@ -4,6 +4,7 @@ import sys
 
 from logging.handlers import RotatingFileHandler
 from datetime import datetime as dt
+from services.aws import Aws
 from services.catdroool import Catdroool
 from config import config
 
@@ -35,5 +36,13 @@ def _init_logger():
 
 if __name__ == '__main__':
   _init_logger()
+  logger = logging.getLogger(config.APP_NAME)
+  try:
+    aws_secret_loc = sys.argv[1]
+    aws = Aws(aws_secret_loc)
+  except KeyError as e:
+    logger.error(f"Error: {e}")
+    sys.exit(1)
+  
   catdroool = Catdroool()
   catdroool.generate_report()
