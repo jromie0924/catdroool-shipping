@@ -8,6 +8,8 @@ stripe = "*"
 boto3 = "*"
 cryptography = "*"
 psycopg2-binary = "*"
+requests = "*"
+pytest = "*"
 
 [dev-packages]
 
