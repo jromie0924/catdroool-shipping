@@ -179,3 +179,4 @@ temp-files/*
 cache/*
 output/*
 *.json
+.DS_Store
