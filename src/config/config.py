@@ -9,6 +9,7 @@ INTERNATIONAL_FILTER = "International"
 DATE_FORMAT_STRING = "%Y-%m-%d"
 DATETIME_FORMAT_STRING = "%Y-%m-%dT%H:%M:%S"
 TIMESTAMP = 'timestamp'
+SORT_FIELD = "ShippingAddressCity"
 
 CACHE_TIMEOUT = 24 # hours
 

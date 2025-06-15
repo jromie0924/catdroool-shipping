@@ -19,13 +19,17 @@ from services.emailer import Emailer
 
 logger = logging.getLogger(config.APP_NAME)
 
+def sort_by_field_alphabetically(mailing_list: list[dict]):
+  field = config.SORT_FIELD
+  return sorted(mailing_list, key=lambda item: item[field])
+
 class Catdroool:
-  def __init__(self):
+  def __init__(self, now: dt):
     self._aws = Aws()
     key_dict = json.loads(self._aws.get_secret(key=config.STRIPE_SECRET_KEY, type=str))
     self._stripe_api_key = key_dict.get(config.STRIPE_SECRET_KEY)
-    self._date_str = dt.now().strftime(config.DATE_FORMAT_STRING)
-    self._datetime_str = dt.now().strftime(config.DATETIME_FORMAT_STRING)
+    self._date_str = now.strftime(config.DATE_FORMAT_STRING)
+    self._datetime_str = now.strftime(config.DATETIME_FORMAT_STRING)
     self._countries = Countries()
     self._error_collection = ErrorCollection()
     self._domestics = Domestics()
@@ -124,7 +128,7 @@ class Catdroool:
     with open(filepath_domestic, 'w') as f:
       writer = csv.DictWriter(f, fieldnames=keys_domestic)
       writer.writeheader()
-      writer.writerows(shipping_records_domestic)
+      writer.writerows(sort_by_field_alphabetically(shipping_records_domestic))
 
     logger.info(f"Records written to {filename_domestic}")
 
@@ -149,7 +153,7 @@ class Catdroool:
           "ShippingAddressLine2": shipping_info.get('line2') or "",
           "IntlShippingAddressLine1": f"{shipping_info.get('line1')}, {shipping_info.get('line2') or ''}",
           "ShippingAddressCity": shipping_info.get('city'),
-          "shippingAddressState": state,
+          "ShippingAddressState": state,
           "ShippingAddressPostalCode": shipping_info.get('postal_code') or "",
           "IntlShippingAddressLine2": f"{shipping_info.get('city')} {state or ''} {shipping_info.get('postal_code')}",
           "ShippingCountry": country
@@ -167,7 +171,7 @@ class Catdroool:
     with open(filepath_intl, 'w') as f:
       writer = csv.DictWriter(f, fieldnames=keys_intl)
       writer.writeheader()
-      writer.writerows(shipping_records_intl)
+      writer.writerows(sort_by_field_alphabetically(shipping_records_intl))
       
     with open(filepath_error, 'w') as file:
       writer = csv.DictWriter(file, fieldnames=ErrorCollection.FIELD_NAMES)
