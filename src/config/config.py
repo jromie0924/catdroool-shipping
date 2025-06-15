@@ -1,6 +1,6 @@
 APP_NAME = "catdroool_shipping_reports"
 LOGGING_LEVEL = "INFO"
-LOG_FILE = "logs/catdroool.log"
+LOG_FILE_LOCATION = "logs"
 API_TOKEN_CACHE_FILE = 'cache/api_tokens.bin'
 EMAILS_ENABLED = True
 
