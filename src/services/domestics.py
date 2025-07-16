@@ -1,11 +1,13 @@
 from http import HTTPStatus
-from typing import Union
+import logging
 import requests
 from common.singleton import Singleton
 from config import config
-from exceptions.addressNotFoundException import AddressNotFoundException
+from ratelimit import limits, sleep_and_retry
 from services.authorization import Authorization
 
+
+logger = logging.getLogger(config.APP_NAME)
 
 class Domestics(Singleton):
   def __init__(self):
@@ -15,8 +17,15 @@ class Domestics(Singleton):
     self._auth = Authorization()
     self._usps_token = self._auth.usps_token
     self._url = f"{config.USPS_URI}/addresses/v3/address"
+  
+  def validate_address(self, address_1: str, address_2: str, city: str, state: str, zip: str) -> dict:
+    if config.ADDRESS_VALIDATION_ENABLED:
+      return self._validate_address(address_1=address_1, address_2=address_2, city=city, state=state, zip=zip)
+    return {}
     
-  def validate_address(self, address_1: str, address_2: str, city: str, state: str, zip: str) -> Union[dict, None]:
+  @sleep_and_retry
+  @limits(calls=1, period=60) # limit to 1 call/minute - USPS limits to 60 calls/hour, so this keeps it within quota
+  def _validate_address(self, address_1: str, address_2: str, city: str, state: str, zip: str) -> dict:
     headers = {
       "accept": "application/json",
       "authorization": f"bearer {self._usps_token}"
@@ -34,13 +43,12 @@ class Domestics(Singleton):
     }
     if plus_4:
       params['ZIPPlus4'] = plus_4
-    
     response = requests.request("GET", url=self._url, headers=headers, params=params)
     if response.status_code == HTTPStatus.OK:
       payload: dict = response.json()
       address = payload.get("address")
       if not address:
-        raise AddressNotFoundException(f"Address not found")
+        return {}
       return address
     
-    raise AddressNotFoundException(f"Address not found")
+    return {}
