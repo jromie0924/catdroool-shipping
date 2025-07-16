@@ -8,19 +8,24 @@ def get_time_difference_hours(start: int, end: int):
 
 def populate_shipment_record(customer: dict, usps_verified_address: dict) -> dict:
   shipping_info = customer['shipping']['address'] if customer['shipping'] and customer['shipping']['address'] else {}
+  name = customer['shipping']['name'] if customer['shipping'] and customer['shipping']['name'] else ""
+  
+  if not shipping_info or not name:
+    raise Exception("Shipping information missing.")
+  
   line_2_visibility: bool = bool(usps_verified_address.get("secondaryAddress") or shipping_info.get('line2'))
-  usps_city = f"{usps_verified_address.get('city')}"
-  usps_state = f"{usps_verified_address.get('state')}"
+  usps_city = f"{usps_verified_address.get('city') or ''}"
+  usps_state = f"{usps_verified_address.get('state') or ''}"
   usps_zip = f"{usps_verified_address.get('ZIPCode')}-{usps_verified_address.get('ZIPPlus4')}"
   
-  # Ensure that the constructed zip code is not "xxxx-"
-  # If it is, then set the usps zip to "" and cause the default
-  # back to the Stripe zip.
+  # Ensure that the constructed zip code is not "xxxxx-"
+  # If it is, then set the usps zip to "" and default back
+  # to the zip from Stripe.
   match = re.match(ZIP_REGEX, usps_zip)
   if not match:
     usps_zip = ""
   
-  line_3 = f"{usps_city or shipping_info.get('city')} {usps_state or shipping_info.get('state')} {usps_zip or shipping_info.get('city')}"
+  line_3 = f"{usps_city or shipping_info.get('city')} {usps_state or shipping_info.get('state')} {usps_zip or shipping_info.get('postal_code')}"
   record = {
     "CardName": customer.get('name'),
     "ShippingName": customer.get('shipping').get('name'),

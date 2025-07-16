@@ -7,7 +7,6 @@ import stripe
 
 from config import config
 from datetime import datetime as dt
-from exceptions.addressNotFoundException import AddressNotFoundException
 from common import utils
 from models import emailType as EMAIL_TYPE
 from models.error import ErrorCollection
@@ -109,6 +108,11 @@ class Catdroool:
                                                                  zip=shipping_info.get("postal_code"),
                                                                  state=shipping_info.get("state"))
 
+        logger.debug(f"Validated address: {usps_verified_address}")
+        if not usps_verified_address and config.ADDRESS_VALIDATION_ENABLED:
+          logger.error(f"Address information for customer {customer['id']} was not recognized by USPS.")
+          self._error_collection.add_new(customer_id=customer['id'], issue="Address information not identified by USPS.", nationality="DOMESTIC")
+
         record = utils.populate_shipment_record(customer=customer, usps_verified_address=usps_verified_address)
         
         if not keys_domestic:
@@ -119,11 +123,8 @@ class Catdroool:
           self._error_collection.add_new(customer_id=customer['id'],
                                issue="Customer shipping information missing.",
                                nationality="DOMESTIC")
-      except AddressNotFoundException as e:
-        logger.error(f"Address information for customer {customer['id']} was not recognized by USPS.")
-        self._error_collection.add_new(customer_id=customer['id'], issue="Address information not identified by USPS.", nationality="DOMESTIC")
       except Exception as e:
-        logger.error(f"failed on customer: {customer['id']}")
+        logger.error(f"failed on customer: {customer['id']} - {e}")
         self._error_collection.add_new(customer_id=customer['id'], issue="An error occured when processing this customer.", nationality="DOMESTIC")
     with open(filepath_domestic, 'w') as f:
       writer = csv.DictWriter(f, fieldnames=keys_domestic)
