@@ -15,7 +15,6 @@ class Domestics(Singleton):
       return None
     self._initialized = True
     self._auth = Authorization()
-    self._usps_token = self._auth.usps_token
     self._url = f"{config.USPS_URI}/addresses/v3/address"
   
   def validate_address(self, address_1: str, address_2: str, city: str, state: str, zip: str) -> dict:
@@ -28,7 +27,7 @@ class Domestics(Singleton):
   def _validate_address(self, address_1: str, address_2: str, city: str, state: str, zip: str) -> dict:
     headers = {
       "accept": "application/json",
-      "authorization": f"bearer {self._usps_token}"
+      "authorization": f"bearer {self._auth.usps_token}"
     }
     
     zip = zip[:5]
