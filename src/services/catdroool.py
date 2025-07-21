@@ -100,7 +100,6 @@ class Catdroool:
     
     for customer in customers_domestic:
       try:
-        
         shipping_info = customer['shipping']['address'] if customer['shipping'] and customer['shipping']['address'] else {}
         usps_verified_address = self._domestics.validate_address(address_1=shipping_info.get("line1"),
                                                                  address_2=shipping_info.get("line2"),
@@ -198,4 +197,6 @@ class Catdroool:
         "path": filepath_error
       }
     ]
+    
+    self._domestics.save_validated_address_cache()
     self._emailer.send_email(body_html=message, files=file_list, date_stamp=self._date_str, subject=config.DELIVERY_EMAIL_SUBJECT, email_type=EMAIL_TYPE.DELIVERY)

@@ -6,7 +6,7 @@ import time
 from common.singleton import Singleton
 from config import config
 from http import HTTPStatus
-
+from datetime import datetime
 from services.crypt import Crypt
 from services.aws import Aws
 import os
@@ -63,20 +63,19 @@ class Authorization(Singleton):
         response_payload = response.json()
         access_token = response_payload['access_token']
         issued_at = response_payload['issued_at']
-        expires_in = response_payload['expires_in'] * 1000 # convert to milliseconds
+        expires_in = response_payload['expires_in'] * 1000
         
         '''
         subtract 10 minutes from the expiration window to go ahead and request another token if it's close to expiration
         This way we don't run as high a risk of the token expiring while the app is running.
         '''
-        buffer = 10 * 60 * 1000 # 10 minutes converted to milliseconds.
-        expires_in -= buffer
-        
+        expires_at = issued_at + expires_in - (10 * 60 * 1000)
         
         self._usps_api_token_cache['token'] = access_token
-        self._usps_api_token_cache['expiration'] = issued_at + expires_in
-        logger.info(f"Successfully retrieved USPS access token. Expires in {'{:.2f}'.format(expires_in / 1000 / 60 / 60)} hours.")
-        
+        self._usps_api_token_cache['expiration'] = expires_at
+        # logger.info(f"Successfully retrieved USPS access token. Expires in {'{:.2f}'.format(expires_in / 60 / 60)} hours.")
+        expires_in_timestamp = datetime.fromtimestamp(expires_at / 1000).strftime("%H:%M:%S")
+        logger.info(f"Successfully retrieved USPS access token. Expires at {expires_in_timestamp}.")
         encrypted_data = self._crypt.encrypt_data(json.dumps(self._usps_api_token_cache), self._crypt.get_key())
         # Ensure the directory exists before writing the cache file
         os.makedirs(os.path.dirname(config.API_TOKEN_CACHE_FILE), exist_ok=True)
@@ -99,6 +98,7 @@ class Authorization(Singleton):
     then = self._usps_api_token_cache.get('expiration')
     if now > then:
       # token has expired. Reacquire.
+      logger.info("USPS access token has expired. Reacquiring...")
       try:
         self._authenticate_usps()
         return self._usps_api_token_cache.get('token')
