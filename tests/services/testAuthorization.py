@@ -19,7 +19,7 @@ class MockConfig:
 @pytest.fixture
 def mock_crypt():
   mock = MagicMock()
-  mock.get_key.return_value = "key"
+  mock.get_key.return_value = b"key"
   mock.decrypt_data.return_value = json.dumps({"expiration": 9999999999999, "token": "abc"})
   mock.encrypt_data.return_value = b"encrypted"
   return mock

@@ -1,0 +1,2 @@
+mock_cached_address = {"1234 main streetChicagoIL60601": '{"streetAddress": "1234 main street", "streetAddressAbbreviation": "1234 main st", "secondaryAddress": "", "cityAbbreviation": "Chicago", "city": "Chicago", "state": "IL", "ZIPCode": "60601", "ZIPPlus4": "1234", "urbanization": ""}'}
+mock_retrieved_usps_address = {"streetAddress": "1234 main street", "streetAddressAbbreviation": "1234 main st", "secondaryAddress": "", "cityAbbreviation": "Chicago", "city": "Chicago", "state": "IL", "ZIPCode": "60601", "ZIPPlus4": "1234", "urbanization": ""}

@@ -44,41 +44,41 @@ class Catdroool:
     
   def generate_report(self):
     logger.info("Generating report...")
-    # products = stripe.Product.search(api_key=self._stripe_api_key, query=f"name~'{config.PRODUCT_FILTER}'")
-    # catdroool_product_codes_domestic = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() not in p.get('name').lower()]
-    # catdroool_product_codes_intl = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() in p.get('name').lower()]
+    products = stripe.Product.search(api_key=self._stripe_api_key, query=f"name~'{config.PRODUCT_FILTER}'")
+    catdroool_product_codes_domestic = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() not in p.get('name').lower()]
+    catdroool_product_codes_intl = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() in p.get('name').lower()]
 
-    # subscriptions = []
-    # subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active')
-    # subscriptions.extend(subs['data'])
-    # while subs.has_more:
-    #   time.sleep(0.05) # rate limit
-    #   starts_after = subs['data'][-1]['id']
-    #   subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active', starting_after=starts_after)
-    #   subscriptions.extend(subs['data'])
+    subscriptions = []
+    subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active')
+    subscriptions.extend(subs['data'])
+    while subs.has_more:
+      time.sleep(0.05) # rate limit
+      starts_after = subs['data'][-1]['id']
+      subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active', starting_after=starts_after)
+      subscriptions.extend(subs['data'])
       
 
-    # customers_domestic: list[dict] = []
-    # customers_intl: list[dict] = []
+    customers_domestic: list[dict] = []
+    customers_intl: list[dict] = []
 
-    # for sub in subscriptions:
-    #   product_codes_domestic = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdroool_product_codes_domestic]
-    #   product_codes_intl = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdroool_product_codes_intl]
-    #   if len(product_codes_domestic):
-    #     cust_id = sub['customer']
-    #     customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
-    #     customers_domestic.append(customer)
-    #     time.sleep(0.05) # rate limit
-    #   if len(product_codes_intl):
-    #     cust_id = sub.get('customer')
-    #     customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
-    #     customers_intl.append(customer)
+    for sub in subscriptions:
+      product_codes_domestic = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdroool_product_codes_domestic]
+      product_codes_intl = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdroool_product_codes_intl]
+      if len(product_codes_domestic):
+        cust_id = sub['customer']
+        customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
+        customers_domestic.append(customer)
+        time.sleep(0.05) # rate limit
+      if len(product_codes_intl):
+        cust_id = sub.get('customer')
+        customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
+        customers_intl.append(customer)
     
-    with open('customers_domestic.json', 'r') as file:
-      customers_domestic = json.load(file)
+    # with open('customers_domestic.json', 'r') as file:
+    #   customers_domestic = json.load(file)
       
-    with open("customers_intl.json", "r") as file:
-      customers_intl = json.load(file)
+    # with open("customers_intl.json", "r") as file:
+    #   customers_intl = json.load(file)
       
     logger.info(f"Number of domestic customers retireved from Stripe: {len(customers_domestic)}")
     logger.info(f"Number of international customers retireved from Stripe: {len(customers_intl)}")
@@ -100,7 +100,6 @@ class Catdroool:
     
     for customer in customers_domestic:
       try:
-        
         shipping_info = customer['shipping']['address'] if customer['shipping'] and customer['shipping']['address'] else {}
         usps_verified_address = self._domestics.validate_address(address_1=shipping_info.get("line1"),
                                                                  address_2=shipping_info.get("line2"),
@@ -198,4 +197,6 @@ class Catdroool:
         "path": filepath_error
       }
     ]
+    
+    self._domestics.save_validated_address_cache()
     self._emailer.send_email(body_html=message, files=file_list, date_stamp=self._date_str, subject=config.DELIVERY_EMAIL_SUBJECT, email_type=EMAIL_TYPE.DELIVERY)
