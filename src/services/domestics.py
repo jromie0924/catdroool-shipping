@@ -37,7 +37,8 @@ class Domestics(Singleton):
         "state": state,
         "ZIPCode": zip
       }
-      key = f"{address_1}{address_2}{city}{state}{zip}"
+      values = [v or "" for v in params.values()]
+      key = "".join(values)
       value = self._validated_address_cache.get(key)
       if value:
         return json.loads(value)
@@ -63,12 +64,14 @@ class Domestics(Singleton):
       address = payload.get("address")
       if not address:
         return {}
-      key = "".join(list(params.values()))
+      values = [v or "" for v in params.values()]
+      key = "".join(values)
       self._validated_address_cache[key] = json.dumps(address)
       return address
     return {}
   
   def save_validated_address_cache(self) -> None:
-    encrypted_data = self._crypt.encrypt_data(json.dumps(self._validated_address_cache), self._crypt.get_key())
-    with open(config.VALIDATED_ADDRESSES_CACHE_FILE, 'wb') as f:
-      f.write(encrypted_data)
+    if self._validated_address_cache:
+      encrypted_data = self._crypt.encrypt_data(json.dumps(self._validated_address_cache), self._crypt.get_key())
+      with open(config.VALIDATED_ADDRESSES_CACHE_FILE, 'wb') as f:
+        f.write(encrypted_data)

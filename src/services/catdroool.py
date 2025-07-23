@@ -73,13 +73,13 @@ class Catdroool:
         cust_id = sub.get('customer')
         customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
         customers_intl.append(customer)
-    
+
     # with open('customers_domestic.json', 'r') as file:
     #   customers_domestic = json.load(file)
-      
+
     # with open("customers_intl.json", "r") as file:
     #   customers_intl = json.load(file)
-      
+
     logger.info(f"Number of domestic customers retireved from Stripe: {len(customers_domestic)}")
     logger.info(f"Number of international customers retireved from Stripe: {len(customers_intl)}")
 
