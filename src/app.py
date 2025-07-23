@@ -7,6 +7,7 @@ from datetime import datetime as dt
 from services.aws import Aws
 from services.catdroool import Catdroool
 from config import config
+from services.domestics import Domestics
 
 now = dt.now()
 
@@ -45,9 +46,15 @@ if __name__ == '__main__':
   try:
     aws_secret_loc = sys.argv[1]
     aws = Aws(aws_secret_loc)
+    domestics = Domestics()
   except KeyError as e:
     logger.error(f"Error: {e}")
     sys.exit(1)
   
   catdroool = Catdroool(now=now)
-  catdroool.generate_report()
+  
+  try:
+    catdroool.generate_report()
+  except KeyboardInterrupt as e:
+    logger.info(f"{type(e)}")
+    domestics.save_validated_address_cache()

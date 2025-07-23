@@ -15,7 +15,7 @@ from email import encoders
 
 logger = logging.getLogger(config.APP_NAME)
 
-class Emailer():
+class Emailer(Singleton):
   def __init__(self):
     if hasattr(self, "_initialized"):
       return None
@@ -65,7 +65,6 @@ class Emailer():
     
     
     try:
-      # server = smtplib.SMTP('smtp.gmail.com', 587)
       server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
       server.ehlo()
       server.login(self._sender_email, self._sender_password)

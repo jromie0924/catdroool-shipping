@@ -47,6 +47,8 @@ class Authorization(Singleton):
     secrets = aws_secret_client.get_secret_value(SecretId='usps_api_credentials')
     if secrets:
       usps_secrets = json.loads(secrets.get("SecretString")) 
+    else:
+      raise Exception("USPS credentials not found in AWS Secrets Manager.")
     
     headers = {
       "accept": "application/json"
@@ -73,10 +75,10 @@ class Authorization(Singleton):
         
         self._usps_api_token_cache['token'] = access_token
         self._usps_api_token_cache['expiration'] = expires_at
-        # logger.info(f"Successfully retrieved USPS access token. Expires in {'{:.2f}'.format(expires_in / 60 / 60)} hours.")
         expires_in_timestamp = datetime.fromtimestamp(expires_at / 1000).strftime("%H:%M:%S")
         logger.info(f"Successfully retrieved USPS access token. Expires at {expires_in_timestamp}.")
         encrypted_data = self._crypt.encrypt_data(json.dumps(self._usps_api_token_cache), self._crypt.get_key())
+
         # Ensure the directory exists before writing the cache file
         os.makedirs(os.path.dirname(config.API_TOKEN_CACHE_FILE), exist_ok=True)
         with open(config.API_TOKEN_CACHE_FILE, 'wb') as file:
