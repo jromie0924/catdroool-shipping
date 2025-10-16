@@ -15,7 +15,7 @@ class DynamoDB(Singleton):
       return None
     self._initialized = True
     aws = Aws()
-    self.dynamodb_resource = aws.dynamodb_client
+    self.dynamodb_resource = aws.dynamodb_resource
   
   def put_item(self, item: dict={}, table_name: str=""):
     try:
