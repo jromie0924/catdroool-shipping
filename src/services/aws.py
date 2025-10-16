@@ -38,10 +38,10 @@ class Aws(Singleton):
   @property
   def dynamodb_client(self):
     if self._access_key and self._secret_key:
-      return boto3.client('dynamodb',
-                          aws_access_key_id=self._access_key,
-                          aws_secret_access_key=self._secret_key,
-                          region_name=self._region)
+      return boto3.resource('dynamodb',
+                            aws_access_key_id=self._access_key,
+                            aws_secret_access_key=self._secret_key,
+                            region_name=self._region)
 
   def get_secret(self, key: str, type: type):
     client = self.secrets_client
@@ -70,19 +70,3 @@ class Aws(Singleton):
         logger.error(f"Failed to uplaod secret \"{key}\"")
     except Exception as e:
       logger.error(f"An error occurred when trying to contact AWS: {e}")
-
-      
-"""
-
-{'id': {'S': '659019a5-ea0b-43bc-a8cc-cde221ecf90e'}, 'report_timestamp': {'S': '251014T213739'}, 'year': {'N': '2025'}, 'month': {'N': '10'}, 'day': {'N': '14'}, 'total_customers': {'N': '570'}, 'domestic_customers': {'N': '530'}, 'international_customers': {'N': '40'}}
-
-schema:
-  id: str (P-key)
-  report_timestamp: full timestamp (str)
-  domestic_customer_count: int
-  international_customer_count: int
-  total_customers: int
-  year: int (sort key)
-  day: int
-
-"""

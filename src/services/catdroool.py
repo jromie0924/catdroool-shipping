@@ -14,6 +14,7 @@ from services.aws import Aws
 from services.countries import Countries
 from services.domestics import Domestics
 from services.emailer import Emailer
+from services.trending import Trending
 
 
 logger = logging.getLogger(config.APP_NAME)
@@ -33,6 +34,7 @@ class Catdroool:
     self._error_collection = ErrorCollection()
     self._domestics = Domestics()
     self._emailer = Emailer()
+    self._trending = Trending()
     
     self.send_startup_notification()
     
@@ -93,6 +95,8 @@ class Catdroool:
     filepath_domestic = f'{directory}{filename_domestic}'
     filepath_intl = f'{directory}{filename_intl}'
     filepath_error = f'{directory}{filename_error}'
+    filename_analysis_workbook = f'Catdroool-customer-analysis_{self._date_str}.xlsx'
+    filepath_analysis_workbook = f'{directory}{filename_analysis_workbook}'
     keys_domestic: list[str] = []
     keys_intl: list[str] = []
     
@@ -182,6 +186,12 @@ class Catdroool:
     
     with open("html/delivery_email.html", "r") as f:
       message: str = f.read()
+      
+    analysis = self._trending.analyze_customer_counts(customers_domestic=shipping_records_domestic,
+                                                      customers_intl=shipping_records_intl)
+
+    Trending.build_metrics_comparison_report(filename=filepath_analysis_workbook, comparison_obj=analysis)
+    
     
     file_list = [
       {
@@ -195,6 +205,10 @@ class Catdroool:
       {
         "name": filename_error,
         "path": filepath_error
+      },
+      {
+        "name": filename_analysis_workbook,
+        "path": filepath_analysis_workbook
       }
     ]
     
