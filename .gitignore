@@ -180,3 +180,4 @@ cache/*
 output/*
 *.json
 .DS_Store
+*.xlsx

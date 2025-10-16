@@ -1,9 +1,16 @@
 import re
+from datetime import datetime as dt
 
 ZIP_REGEX = r'^\d{5}(-\d{4})?$'
 
 def get_time_difference_hours(start: int, end: int):
   return float(end - start) / 1000.0 / 60.0 / 60.0
+
+
+def get_previous_month(month: int = 0) -> int:
+  if not month:
+    month = dt.now().month
+  return (month - 2) % 12 + 1
 
 
 def populate_shipment_record(customer: dict, usps_verified_address: dict) -> dict:

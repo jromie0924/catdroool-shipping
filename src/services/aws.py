@@ -35,6 +35,14 @@ class Aws(Singleton):
                             aws_secret_access_key=self._secret_key,
                             region_name=self._region)
       
+  @property
+  def dynamodb_resource(self):
+    if self._access_key and self._secret_key:
+      return boto3.resource('dynamodb',
+                            aws_access_key_id=self._access_key,
+                            aws_secret_access_key=self._secret_key,
+                            region_name=self._region)
+
   def get_secret(self, key: str, type: type):
     client = self.secrets_client
     try:
