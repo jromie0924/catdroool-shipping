@@ -140,15 +140,17 @@ class Catdroool:
     for customer in customers_intl:
       try:
         shipping_info = customer['shipping']['address'] if customer['shipping'] and customer['shipping']['address'] else {}
-        country = self._countries.get_country_name_from_id(country_code = shipping_info.get('country'))
-        state = ""
-        if shipping_info["state"]:
-          if self._countries.get_state_code_by_country_code_state_code(country_code=shipping_info.get("country"), state_code=shipping_info["state"]):
-            state = shipping_info["state"]
-          else:
-            self._error_collection.add_new(customer_id=customer['id'],
-                                 issue=f"Shipping state code {shipping_info["state"]} is not registered in world database for the country of {country}.",
-                                 nationality="INTERNATIONAL")
+        # country = self._countries.get_country_name_from_id(country_code = shipping_info.get('country'))
+        # state = ""
+        # if shipping_info["state"]:
+        #   if self._countries.get_state_code_by_country_code_state_code(country_code=shipping_info.get("country"), state_code=shipping_info["state"]):
+        #     state = shipping_info["state"]
+        #   else:
+        #     self._error_collection.add_new(customer_id=customer['id'],
+        #                          issue=f"Shipping state code {shipping_info["state"]} is not registered in world database for the country of {country}.",
+        #                          nationality="INTERNATIONAL")
+        country = shipping_info.get('country', '')
+        state = shipping_info.get('state', '')
 
         record = {
           "CardName": customer.get('name'),
