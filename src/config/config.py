@@ -1,15 +1,16 @@
 ENV = "prod"
 
 APP_NAME = "catdroool_shipping_reports"
-LOGGING_LEVEL = "INFO"
+LOGGING_LEVEL = "DEBUG"
 LOG_FILE_LOCATION = "logs"
 API_TOKEN_CACHE_FILE = 'cache/api_tokens.bin'
 VALIDATED_ADDRESSES_CACHE_FILE = 'cache/validated_domestic_addresses.bin'
-EMAILS_ENABLED = True
+EMAILS_ENABLED = False
 ADDRESS_VALIDATION_ENABLED = True
 
 PRODUCT_FILTER = "Catdroool Club"
 INTERNATIONAL_FILTER = "International"
+GIFT_FILTER = "Gift"
 DATE_FORMAT_STRING = "%Y-%m-%d"
 DATETIME_FORMAT_STRING = "%Y-%m-%dT%H:%M:%S"
 TIMESTAMP = 'timestamp'

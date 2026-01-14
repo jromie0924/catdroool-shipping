@@ -11,7 +11,7 @@ from common import utils
 from models import emailType as EMAIL_TYPE
 from models.error import ErrorCollection
 from services.aws import Aws
-from services.countries import Countries
+# from services.countries import Countries
 from services.domestics import Domestics
 from services.emailer import Emailer
 from services.trending import Trending
@@ -30,7 +30,7 @@ class Catdroool:
     self._stripe_api_key = key_dict.get(config.STRIPE_SECRET_KEY)
     self._date_str = now.strftime(config.DATE_FORMAT_STRING)
     self._datetime_str = now.strftime(config.DATETIME_FORMAT_STRING)
-    self._countries = Countries()
+    # self._countries = Countries()
     self._error_collection = ErrorCollection()
     self._domestics = Domestics()
     self._emailer = Emailer()
@@ -47,52 +47,83 @@ class Catdroool:
   def generate_report(self):
     logger.info("Generating report...")
     products = stripe.Product.search(api_key=self._stripe_api_key, query=f"name~'{config.PRODUCT_FILTER}'")
-    catdroool_product_codes_domestic = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() not in p.get('name').lower()]
+
+    catdroool_product_codes_domestic = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() not in p.get('name').lower() and config.GIFT_FILTER.lower() not in p.get('name').lower()]
     catdroool_product_codes_intl = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() in p.get('name').lower()]
+    catdroool_product_codes_gift = [p.get('id') for p in products if config.GIFT_FILTER.lower() in p.get('name').lower()]
 
     subscriptions = []
-    subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active')
+    subs = stripe.Subscription.list(api_key=self._stripe_api_key)
     subscriptions.extend(subs['data'])
     while subs.has_more:
       time.sleep(0.05) # rate limit
       starts_after = subs['data'][-1]['id']
-      subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active', starting_after=starts_after)
+      subs = stripe.Subscription.list(api_key=self._stripe_api_key, starting_after=starts_after)
       subscriptions.extend(subs['data'])
       
 
     customers_domestic: list[dict] = []
     customers_intl: list[dict] = []
+    customers_gift: list[dict] = []
+    customers_wut: list[dict] = []
 
     for sub in subscriptions:
       product_codes_domestic = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdroool_product_codes_domestic]
       product_codes_intl = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdroool_product_codes_intl]
+      product_codes_gift = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdroool_product_codes_gift]
       if len(product_codes_domestic):
         cust_id = sub['customer']
         customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
         customers_domestic.append(customer)
         time.sleep(0.05) # rate limit
-      if len(product_codes_intl):
+      elif len(product_codes_intl):
         cust_id = sub.get('customer')
         customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
         customers_intl.append(customer)
+      elif len(product_codes_gift):
+        cust_id = sub.get('customer')
+        customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
+        customers_gift.append(customer)
+      else:
+        cust_id = sub.get('customer')
+        # customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
+        product_codes = [i['plan']['product'] for i in sub['items']['data']]
+        product_names = []
+        for code in product_codes:
+          product = stripe.Product.retrieve(api_key=self._stripe_api_key, id=code)
+          product_names.append(product.get('name'))
+        # customers_wut.append(customer)
+        data = {'Customer Stripe ID': cust_id, 'Product Name': product_names[0]}
+        customers_wut.append(data)
+    
+    with open('customers_weird_product_codes.csv', 'w') as file:
+      writer = csv.DictWriter(file, fieldnames=["Customer Stripe ID", "Product Name"])
+      writer.writeheader()
+      writer.writerows(customers_wut)
 
     # with open('customers_domestic.json', 'r') as file:
     #   customers_domestic = json.load(file)
+      
+    # with open('customers_gift.json', 'r') as file:
+    #   customers_gift = json.load(file)
 
     # with open("customers_intl.json", "r") as file:
     #   customers_intl = json.load(file)
 
-    logger.info(f"Number of domestic customers retireved from Stripe: {len(customers_domestic)}")
+    logger.info(f"Number of domestic customers retireved from Stripe: {len(customers_domestic) + len(customers_gift)}")
     logger.info(f"Number of international customers retireved from Stripe: {len(customers_intl)}")
 
 
     shipping_records_domestic: list[dict] = []
+    shipping_records_gift: list[dict] = []
     shipping_records_intl: list[dict] = []
     directory = f'output/{self._date_str}/'
     filename_domestic = f'Catdroool-shipping-record_domestic_{self._date_str}.csv'
+    filename_gift = f'Catdroool-shipping-record_domestic_gift_{self._date_str}.csv'
     filename_intl = f'Catdroool-shipping-record_international_{self._date_str}.csv'
     filename_error = f'Catdroool-shipping-errors_{self._date_str}.csv'
     filepath_domestic = f'{directory}{filename_domestic}'
+    filepath_gift = f'{directory}{filename_gift}'
     filepath_intl = f'{directory}{filename_intl}'
     filepath_error = f'{directory}{filename_error}'
     filename_analysis_workbook = f'Catdroool-customer-analysis_{self._date_str}.xlsx'
@@ -102,9 +133,13 @@ class Catdroool:
     
     os.makedirs(os.path.dirname(directory), exist_ok=True)
     
-    for customer in customers_domestic:
+    customers_domestic_dict = [{"type": "regular", "value": value} for value in customers_domestic]
+    customers_gift_dict = [{"type": "gift", "value": value} for value in customers_gift]
+    combined_domestic = customers_domestic_dict + customers_gift_dict
+    
+    for customer in combined_domestic: # TODO: rework to utilize the dictionary items
       try:
-        shipping_info = customer['shipping']['address'] if customer['shipping'] and customer['shipping']['address'] else {}
+        shipping_info = customer['value']['shipping']['address'] if customer['value']['shipping'] and customer['value']['shipping']['address'] else {}
         usps_verified_address = self._domestics.validate_address(address_1=shipping_info.get("line1"),
                                                                  address_2=shipping_info.get("line2"),
                                                                  city=shipping_info.get("city"),
@@ -113,28 +148,36 @@ class Catdroool:
 
         logger.debug(f"Validated address: {usps_verified_address}")
         if not usps_verified_address and config.ADDRESS_VALIDATION_ENABLED:
-          logger.error(f"Address information for customer {customer['id']} was not recognized by USPS.")
-          self._error_collection.add_new(customer_id=customer['id'], issue="Address information not identified by USPS.", nationality="DOMESTIC")
+          logger.error(f"Address information for customer {customer['value']['id']} was not recognized by USPS.")
+          self._error_collection.add_new(customer_id=customer['value']['id'], issue="Address information not identified by USPS.", nationality="DOMESTIC")
 
-        record = utils.populate_shipment_record(customer=customer, usps_verified_address=usps_verified_address)
+        record = utils.populate_shipment_record(customer=customer['value'], usps_verified_address=usps_verified_address)
         
         if not keys_domestic:
           keys_domestic = record.keys()
-        shipping_records_domestic.append(record)
+        
+        if customer['type'] == 'regular':
+          shipping_records_domestic.append(record)
+        elif customer['type'] == 'gift':
+          shipping_records_gift.append(record)
         
         if not shipping_info:
-          self._error_collection.add_new(customer_id=customer['id'],
+          self._error_collection.add_new(customer_id=customer['value']['id'],
                                issue="Customer shipping information missing.",
                                nationality="DOMESTIC")
       except Exception as e:
-        logger.error(f"failed on customer: {customer['id']} - {e}")
-        self._error_collection.add_new(customer_id=customer['id'], issue="An error occured when processing this customer.", nationality="DOMESTIC")
+        logger.error(f"failed on customer: {customer['value']['id']} - {e}")
+        self._error_collection.add_new(customer_id=customer['value']['id'], issue="An error occured when processing this customer.", nationality="DOMESTIC")
     with open(filepath_domestic, 'w') as f:
       writer = csv.DictWriter(f, fieldnames=keys_domestic)
       writer.writeheader()
       writer.writerows(sort_by_field_alphabetically(shipping_records_domestic))
-
     logger.info(f"Records written to {filename_domestic}")
+    with open(filepath_gift, 'w') as f:
+      writer = csv.DictWriter(f, fieldnames=keys_domestic)
+      writer.writeheader()
+      writer.writerows(sort_by_field_alphabetically(shipping_records_gift))
+    logger.info(f"Records written to {filename_gift}")
 
 
     for customer in customers_intl:
@@ -197,6 +240,10 @@ class Catdroool:
       {
         "name": filename_domestic,
         "path": filepath_domestic
+      },
+      {
+        "name": filename_gift,
+        "path": filepath_gift
       },
       {
         "name": filename_intl,
