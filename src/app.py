@@ -48,7 +48,7 @@ if __name__ == '__main__':
     aws = Aws(aws_secret_loc)
     domestics = Domestics()
   except KeyError as e:
-    logger.error(f"Error: {e}")
+    logger.error(f"Error:", exc_info=True)
     sys.exit(1)
   
   catdroool = Catdroool(now=now)

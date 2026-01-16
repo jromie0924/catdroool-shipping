@@ -18,17 +18,17 @@ class Countries(Singleton):
     self._initialized = True
     self._sql_path = 'sql'
     self._aws = Aws()
-    self.get_sql_connection()
+    # self.get_sql_connection()
     
-  def get_sql_connection(self):
-    connection_fields: dict = json.loads(self._aws.get_secret(key=config.AWS_DB_SECRET_NAME, type=str))
-    self._conn = psycopg2.connect(database = connection_fields.get('dbname'),
-                                  user=connection_fields.get('username'),
-                                  password=connection_fields.get('password'),
-                                  host=connection_fields.get('host'),
-                                  port=connection_fields.get('port'),
-                                  )
-    self._conn.autocommit = True
+  # def get_sql_connection(self):
+  #   connection_fields: dict = json.loads(self._aws.get_secret(key=config.AWS_DB_SECRET_NAME, type=str))
+  #   self._conn = psycopg2.connect(database = connection_fields.get('dbname'),
+  #                                 user=connection_fields.get('username'),
+  #                                 password=connection_fields.get('password'),
+  #                                 host=connection_fields.get('host'),
+  #                                 port=connection_fields.get('port'),
+  #                                 )
+  #   self._conn.autocommit = True
   
   def get_country_name_from_id(self, country_code: str) -> Union[str, None]:
     sql_file = os.path.join(self._sql_path, 'get_country_name_by_code.sql')
