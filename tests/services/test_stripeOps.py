@@ -41,13 +41,15 @@ def test_stripeops_init(mock_aws, mock_stripe_products):
   # Clear singleton instances
   StripeOps._instances = {}
   
-  # Note: The constructor has `if not hasattr` which should be `if hasattr`
-  # This is a bug, so we need to work around it
+  # WORKAROUND: The StripeOps.__init__ has a bug on line 16:
+  # `if not hasattr(self, "_initialized")` should be `if hasattr(self, "_initialized")`
+  # This workaround manually sets _initialized to allow testing.
+  # TODO: Remove this workaround once the bug in StripeOps.__init__ is fixed.
   with patch("services.stripeOps.Aws", return_value=mock_aws), \
        patch("services.stripeOps.config", MockConfig), \
        patch("services.stripeOps.stripe.Product.search", return_value=mock_stripe_products):
     
-    # Due to the bug in __init__, we need to manually set _initialized
+    # Manually create instance and set _initialized to work around the bug
     stripe_ops = object.__new__(StripeOps)
     stripe_ops._initialized = False
     StripeOps.__init__(stripe_ops)
