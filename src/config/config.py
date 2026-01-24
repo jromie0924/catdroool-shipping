@@ -19,6 +19,8 @@ CACHE_TIMEOUT = 24 # hours
 
 # Stripe
 STRIPE_SECRET_KEY = 'stripe_api_key'
+STRIPE_CALLS_PER_SECOND = 100
+STRIPE_SECONDS = 1
 
 # AWS Constants
 AWS_ACCESS_KEY_FILENAME = "catdroool_app_user_accessKeys.csv"
