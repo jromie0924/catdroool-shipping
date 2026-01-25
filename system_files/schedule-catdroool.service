@@ -4,7 +4,7 @@ Description=A job to start the catdroool reports
 [Service]
 Type=simple
 RemainAfterExit=no
-ExecStart=/home/jackson/projects/catdroool-shipping/scripts/catdroool-startup
+ExecStart=$HOME/projects/catdroool-shipping/scripts/catdroool-startup
 Restart=no
 User=jackson
 
