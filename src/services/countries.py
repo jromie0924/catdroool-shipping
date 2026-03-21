@@ -18,7 +18,7 @@ class Countries(Singleton):
     self._initialized = True
     self._sql_path = 'sql'
     self._aws = Aws()
-    self.get_sql_connection()
+    # self.get_sql_connection()
     
   def get_sql_connection(self):
     connection_fields: dict = json.loads(self._aws.get_secret(key=config.AWS_DB_SECRET_NAME, type=str))

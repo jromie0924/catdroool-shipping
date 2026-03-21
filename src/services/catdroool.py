@@ -30,7 +30,7 @@ class Catdroool:
     self._stripe_api_key = key_dict.get(config.STRIPE_SECRET_KEY)
     self._date_str = now.strftime(config.DATE_FORMAT_STRING)
     self._datetime_str = now.strftime(config.DATETIME_FORMAT_STRING)
-    self._countries = Countries()
+    # self._countries = Countries()
     self._error_collection = ErrorCollection()
     self._domestics = Domestics()
     self._emailer = Emailer()
