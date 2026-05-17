@@ -11,7 +11,6 @@ from common import utils
 from models import emailType as EMAIL_TYPE
 from models.error import ErrorCollection
 from services.aws import Aws
-from services.countries import Countries
 from services.domestics import Domestics
 from services.emailer import Emailer
 from services.trending import Trending
@@ -30,7 +29,6 @@ class Catdroool:
     self._stripe_api_key = key_dict.get(config.STRIPE_SECRET_KEY)
     self._date_str = now.strftime(config.DATE_FORMAT_STRING)
     self._datetime_str = now.strftime(config.DATETIME_FORMAT_STRING)
-    # self._countries = Countries()
     self._error_collection = ErrorCollection()
     self._domestics = Domestics()
     self._emailer = Emailer()
@@ -140,15 +138,6 @@ class Catdroool:
     for customer in customers_intl:
       try:
         shipping_info = customer['shipping']['address'] if customer['shipping'] and customer['shipping']['address'] else {}
-        # country = self._countries.get_country_name_from_id(country_code = shipping_info.get('country'))
-        # state = ""
-        # if shipping_info["state"]:
-        #   if self._countries.get_state_code_by_country_code_state_code(country_code=shipping_info.get("country"), state_code=shipping_info["state"]):
-        #     state = shipping_info["state"]
-        #   else:
-        #     self._error_collection.add_new(customer_id=customer['id'],
-        #                          issue=f"Shipping state code {shipping_info["state"]} is not registered in world database for the country of {country}.",
-        #                          nationality="INTERNATIONAL")
         country = shipping_info.get('country', '')
         state = shipping_info.get('state', '')
 
