@@ -16,7 +16,7 @@ from services.domestics import Domestics, IGNORED_INPUT_KEY
 from services.emailer import Emailer
 from services.trending import Trending
 
-
+print('hello')
 logger = logging.getLogger(config.APP_NAME)
 
 def sort_by_field_alphabetically(mailing_list: list[dict]):
