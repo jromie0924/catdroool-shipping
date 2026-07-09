@@ -8,10 +8,11 @@ import stripe
 from config import config
 from datetime import datetime as dt
 from common import utils
+from common.exceptions import AddressNotFoundError
 from models import emailType as EMAIL_TYPE
 from models.error import ErrorCollection
 from services.aws import Aws
-from services.domestics import Domestics
+from services.domestics import Domestics, IGNORED_INPUT_KEY
 from services.emailer import Emailer
 from services.trending import Trending
 
@@ -110,9 +111,11 @@ class Catdroool:
                                                                  state=shipping_info.get("state"))
 
         logger.debug(f"Validated address: {usps_verified_address}")
-        if not usps_verified_address and config.ADDRESS_VALIDATION_ENABLED:
-          logger.error(f"Address information for customer {customer['id']} was not recognized by USPS.")
-          self._error_collection.add_new(customer_id=customer['id'], issue="Address information not identified by USPS.", nationality="DOMESTIC")
+        if usps_verified_address.get(IGNORED_INPUT_KEY):
+          logger.error(f"Part of the address for customer {customer['id']} was ignored during validation.")
+          self._error_collection.add_new(customer_id=customer['id'],
+                               issue="Address only partially matched. Check this customer's address in Stripe.",
+                               nationality="DOMESTIC")
 
         record = utils.populate_shipment_record(customer=customer, usps_verified_address=usps_verified_address)
         
@@ -124,6 +127,13 @@ class Catdroool:
           self._error_collection.add_new(customer_id=customer['id'],
                                issue="Customer shipping information missing.",
                                nationality="DOMESTIC")
+      except AddressNotFoundError:
+        # The address could not be matched at all, so the customer is left out of the
+        # shipping report rather than shipped to an address we know is wrong.
+        logger.error(f"Address for customer {customer['id']} could not be matched. Omitting from the report.")
+        self._error_collection.add_new(customer_id=customer['id'],
+                             issue="Address not found. Customer omitted from the report. Check this customer's address in Stripe.",
+                             nationality="DOMESTIC")
       except Exception as e:
         logger.error(f"failed on customer: {customer['id']} - {e}")
         self._error_collection.add_new(customer_id=customer['id'], issue="An error occured when processing this customer.", nationality="DOMESTIC")
@@ -203,5 +213,4 @@ class Catdroool:
       }
     ]
     
-    self._domestics.save_validated_address_cache()
     self._emailer.send_email(body_html=message, files=file_list, date_stamp=self._date_str, subject=config.DELIVERY_EMAIL_SUBJECT, email_type=EMAIL_TYPE.DELIVERY)
