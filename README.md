@@ -62,14 +62,12 @@ catdroool-shipping/
 │       ├── domestics.py     # Domestic shipping validation
 │       ├── dynamodb.py      # DynamoDB operations
 │       ├── emailer.py       # Email functionality
-│       ├── stripeOps.py     # Stripe API operations
 │       └── trending.py      # Analytics and metrics
-├── tests/                   # Test suite (75 tests)
+├── tests/                   # Test suite (78 tests)
 │   ├── common/              # Common utilities tests
 │   ├── services/            # Service layer tests
 │   └── test_helpers/        # Test utilities
 ├── html/                    # Email templates
-├── sql/                     # SQL queries
 ├── output/                  # Generated reports
 ├── cache/                   # Cached data
 ├── logs/                    # Application logs
