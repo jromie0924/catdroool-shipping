@@ -57,11 +57,8 @@ catdroool-shipping/
 │   │   ├── emailType.py     # Email type enum
 │   │   └── error.py         # Error collection
 │   └── services/            # Business logic services
-│       ├── authorization.py # USPS API authentication
 │       ├── aws.py           # AWS operations (Secrets, DynamoDB)
 │       ├── catdroool.py     # Main business logic
-│       ├── countries.py     # Country/state lookups
-│       ├── crypt.py         # Encryption services
 │       ├── domestics.py     # Domestic shipping validation
 │       ├── dynamodb.py      # DynamoDB operations
 │       ├── emailer.py       # Email functionality
@@ -84,9 +81,9 @@ catdroool-shipping/
 ## Features
 
 ### Address Validation
-- USPS API integration for domestic address validation
-- Address caching to reduce API calls
-- Fallback to Stripe address if validation fails
+- Smarty US Street API integration for domestic address validation
+- Customers whose address cannot be matched are omitted from the report and flagged
+- Partial matches are kept but flagged for review in Stripe
 
 ### Report Generation
 - Domestic customer CSV reports
@@ -125,10 +122,9 @@ INTERNATIONAL_FILTER = "International"
 
 The application integrates with:
 - **Stripe**: Customer and subscription data
-- **USPS API**: Address validation
+- **Smarty US Street API**: Address validation
 - **AWS Secrets Manager**: Secure credential storage
 - **AWS DynamoDB**: Metrics tracking
-- **PostgreSQL**: Country/state database
 - **Gmail SMTP**: Email delivery
 
 ## Development
@@ -162,7 +158,6 @@ just test
 ## Security
 
 - Credentials stored in AWS Secrets Manager
-- Encryption for cached sensitive data
 - No secrets in source code or config files
 - Rate limiting on API calls
 
@@ -176,16 +171,10 @@ just test
 ls system_files/catdroool_app_user_accessKeys.csv
 ```
 
-**Database connection errors**
+**Smarty API errors**
 ```bash
-# Check database secret in AWS Secrets Manager
-# Secret name: world_database_connection
-```
-
-**USPS API errors**
-```bash
-# Verify USPS credentials in AWS Secrets Manager
-# Check API token cache: cache/api_tokens.bin
+# Verify Smarty credentials in AWS Secrets Manager
+# Secret name: smarty_api_key, formatted as "<auth-id>:<auth-token>"
 ```
 
 ## Contributing

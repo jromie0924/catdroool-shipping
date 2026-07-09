@@ -3,8 +3,6 @@ ENV = "prod"
 APP_NAME = "catdroool_shipping_reports"
 LOGGING_LEVEL = "INFO"
 LOG_FILE_LOCATION = "logs"
-API_TOKEN_CACHE_FILE = 'cache/api_tokens.bin'
-VALIDATED_ADDRESSES_CACHE_FILE = 'cache/validated_domestic_addresses.bin'
 EMAILS_ENABLED = True
 ADDRESS_VALIDATION_ENABLED = True
 
@@ -27,20 +25,12 @@ AWS_ACCESS_KEY_FILENAME = "catdroool_app_user_accessKeys.csv"
 AWS_REGION = "us-east-2"
 AWS_ACCESS_KEY_ID_NAME = 'Access key ID'
 AWS_SECRET_ACCESS_KEY_NAME = 'Secret access key'
-AWS_DB_SECRET_NAME = 'world_database_connection'
 
-# USPS
-USPS_CLIENT_ID = "client_id"
-USPS_CLIENT_SECRET = "client_secret"
-USPS_URI = "https://apis.usps.com"
-
-# Crypt
-CRYPT_SECRET_NAME = "crypt_key"
-CRYPT_TTL_DAYS = 90
-
-# Database
-DATABASE_SERVER = 'tolfmachine'
-DATABASE_NAME = 'world'
+# Smarty
+SMARTY_API_KEY = 'smarty_api_key' # both the AWS secret name and the key within it
+SMARTY_API_KEY_SEPARATOR = ':' # the secret holds "<auth-id>:<auth-token>"
+SMARTY_LICENSES = ["us-core-cloud"]
+SMARTY_MAX_RETRIES = 5 # the SDK sleeps for the Retry-After value on a 429 and retries this many times
 
 # Email
 DELIVERY_EMAIL_SUBJECT = "Catdroool Shipping File Delivery"
