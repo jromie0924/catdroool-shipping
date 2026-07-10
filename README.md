@@ -6,10 +6,12 @@ Automated shipping report generation system for Catdroool subscription customers
 
 This application generates shipping reports for Catdroool subscription customers by:
 - Retrieving active subscriptions from Stripe
-- Validating addresses via USPS API
+- Validating addresses via the Smarty US Street API
 - Generating CSV reports for domestic and international customers
 - Sending automated email reports
 - Tracking customer metrics in DynamoDB
+
+It runs once a month as a scheduled ECS Fargate task. See [Deployment](#deployment).
 
 ## Quick Start
 
@@ -30,6 +32,14 @@ pip install -r requirements.txt
 # Run the main application
 python src/app.py
 ```
+
+AWS credentials are resolved by boto3's default chain — your `~/.aws/credentials` profile
+or `AWS_*` environment variables locally, and the ECS task role in Fargate. The application
+never reads an access key from disk.
+
+> **Careful:** `Catdroool.__init__` sends a startup notification email before it does any
+> work, and the run ends by emailing the reports. A local run against production secrets
+> will email real recipients. Set `EMAILS_ENABLED = False` in `src/config/config.py` first.
 
 ### Running Tests
 
@@ -62,17 +72,21 @@ catdroool-shipping/
 │       ├── domestics.py     # Domestic shipping validation
 │       ├── dynamodb.py      # DynamoDB operations
 │       ├── emailer.py       # Email functionality
+│       ├── s3.py            # Report archive
 │       ├── stripeOps.py     # Stripe API operations
 │       └── trending.py      # Analytics and metrics
 ├── tests/                   # Test suite (75 tests)
 │   ├── common/              # Common utilities tests
 │   ├── services/            # Service layer tests
 │   └── test_helpers/        # Test utilities
+├── infra/
+│   └── catdroool-shipping.yaml  # CloudFormation: ECR, ECS, IAM, schedule
 ├── html/                    # Email templates
 ├── sql/                     # SQL queries
 ├── output/                  # Generated reports
 ├── cache/                   # Cached data
 ├── logs/                    # Application logs
+├── Dockerfile              # Container image for the Fargate task
 ├── TESTING.md              # Testing documentation
 ├── Pipfile                 # Pipenv dependencies
 └── pyproject.toml          # Project configuration
@@ -118,6 +132,22 @@ PRODUCT_FILTER = "Catdroool Club"
 INTERNATIONAL_FILTER = "International"
 ```
 
+These are read from the environment so the same image can serve both stacks. The
+CloudFormation task definition sets all four.
+
+| Variable | Default | Effect |
+|---|---|---|
+| `APP_ENV` | `prod` | Selects `catdroool_customer_counts_{prod,dev}` in DynamoDB |
+| `AWS_REGION` | `us-east-2` | Region for Secrets Manager and DynamoDB |
+| `EMAILS_ENABLED` | `true` | When false, `send_email` returns immediately and no credentials are fetched |
+| `ADDRESS_VALIDATION_ENABLED` | `true` | When false, no Smarty client is built and no lookup is ever spent |
+| `REPORT_BUCKET` | `""` | S3 bucket for archived reports. Empty skips the upload |
+
+The two flags accept `true/false`, `1/0`, `yes/no`, `on/off`, case-insensitively. **Anything
+else raises at import.** A value silently read as false would ship unvalidated addresses to
+production; one silently read as true would spend Smarty verifications. `bool("false")` is
+`True`, so this is not a hypothetical.
+
 ## External Services
 
 The application integrates with:
@@ -125,6 +155,7 @@ The application integrates with:
 - **Smarty US Street API**: Address validation
 - **AWS Secrets Manager**: Secure credential storage
 - **AWS DynamoDB**: Metrics tracking
+- **AWS S3**: Report archive
 - **Gmail SMTP**: Email delivery
 
 ## Development
@@ -155,10 +186,93 @@ just install
 just test
 ```
 
+## Deployment
+
+The report runs as an ECS Fargate task in a **public subnet with a public IP and no inbound
+rules**. It needs egress to Stripe, Smarty and Gmail; a public IP provides that for free,
+whereas a private subnet would require a NAT Gateway at roughly $33/month to support twenty
+minutes of work.
+
+### First deploy
+
+Create the stack with the schedule disabled, so nothing fires before an image exists:
+
+```bash
+just deploy-infra vpc-0abc123 subnet-0aaa,subnet-0bbb DISABLED
+```
+
+Build and push the image, then enable the schedule:
+
+```bash
+just push
+just deploy-infra vpc-0abc123 subnet-0aaa,subnet-0bbb
+```
+
+The three secrets the task role is granted (`stripe_api_key`, `smarty_api_key`,
+`catdroool_email_secrets`) and the DynamoDB table are **not** created by the stack; they
+already exist and are only referenced.
+
+### Subsequent deploys
+
+```bash
+just push          # build, tag, push to ECR
+```
+
+The task definition points at the `latest` tag, so a push is enough. Run `just deploy-infra`
+only when the template itself changes.
+
+### Report archive
+
+Every run uploads its four output files to `s3://catdroool-shipping-reports-<env>-<account>/<date>/`
+before sending the email, so a failed send no longer means a lost report. The bucket is
+private, encrypted, expires objects after a year, and is **retained if the stack is deleted**.
+
+```bash
+just reports                    # list what has been archived
+just fetch-reports 2026-07-09   # pull one date into ./output/
+```
+
+### Testing a deployment without spending Smarty lookups
+
+The Smarty allotment is capped monthly and one full run consumes several hundred
+verifications, so a production run cannot be used as a test. Deploy a dev stack instead. It
+exercises the real task role, the real egress rules, real Stripe (which is unmetered), and
+the dev DynamoDB table — then writes the finished report to the dev bucket instead of
+emailing it:
+
+```bash
+just deploy-dev vpc-0abc123 subnet-0aaa,subnet-0bbb
+just app_env=dev run-now
+just app_env=dev logs
+just app_env=dev reports        # the report is here, not in your inbox
+```
+
+`deploy-dev` sets `EMAILS_ENABLED=false` and `ADDRESS_VALIDATION_ENABLED=false` and leaves
+the schedule disabled. With validation off, `Domestics` never constructs a client and never
+reads `smarty_api_key` — which also means a dev run cannot tell you whether the task role's
+permission on that secret is correct. Verify that separately.
+
+Addresses in a dev run pass through unverified from Stripe, so the CSVs are structurally
+valid but not postally correct. Do not mail from them.
+
+### Running it off-schedule
+
+```bash
+just run-now      # production: this emails the real recipients
+```
+
+### Watching a run
+
+```bash
+just logs
+```
+
 ## Security
 
 - Credentials stored in AWS Secrets Manager
 - No secrets in source code or config files
+- No long-lived access keys: the task assumes an IAM role scoped to three secrets and one
+  DynamoDB table
 - Rate limiting on API calls
 
 ## Troubleshooting
@@ -167,9 +281,16 @@ just test
 
 **Missing AWS credentials**
 ```bash
-# Ensure AWS credentials file exists
-ls system_files/catdroool_app_user_accessKeys.csv
+# Confirm boto3 can resolve a caller. In Fargate this is the task role; locally it is
+# whatever profile or AWS_* environment variables you have configured.
+aws sts get-caller-identity
 ```
+
+**Task dies immediately with "exec format error"**
+
+The image architecture does not match the task definition. Building on Apple Silicon
+produces `arm64`; pass `--platform linux/amd64` to `docker build` or set the stack's
+`CpuArchitecture` parameter to `ARM64`.
 
 **Smarty API errors**
 ```bash

@@ -21,13 +21,23 @@ class Emailer(Singleton):
       return None
     self._initialized = True
     self._aws = Aws()
-    
+    self._sender_email: str = None
+    self._sender_password: str = None
+    self._delivery_recipients: str = None
+    self._notification_recipients: str = None
+
+    # Reading the credentials reaches into AWS, so skip it entirely when email is turned
+    # off, the same way Domestics skips building its client. send_email returns before it
+    # touches any of the attributes above.
+    if not config.EMAILS_ENABLED:
+      return
+
     try:
       email_secrets: dict = json.loads(self._aws.get_secret(key="catdroool_email_secrets", type=str))
-      self._sender_email: str = email_secrets.get("sender_email")
-      self._sender_password: str = email_secrets.get("sender_password")
-      self._delivery_recipients: str = email_secrets.get("delivery_recipients")
-      self._notification_recipients: str = email_secrets.get("notification_recipients")
+      self._sender_email = email_secrets.get("sender_email")
+      self._sender_password = email_secrets.get("sender_password")
+      self._delivery_recipients = email_secrets.get("delivery_recipients")
+      self._notification_recipients = email_secrets.get("notification_recipients")
     except Exception as e:
       logger.error(f"Failed to retrieve email credentials and metadata: {e}")
     

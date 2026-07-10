@@ -15,6 +15,7 @@ class Trending(Singleton):
   def __init__(self):
     if hasattr(self, "_initialized"):
       return None
+    self._initialized = True
     self._dynamodb = DynamoDB()
     
   def build_trending_item(self, cust_dom: int, cust_intl: int) -> dict:

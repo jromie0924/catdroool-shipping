@@ -178,11 +178,28 @@ def test_send_email_attachment_failure(mock_aws, mock_smtp):
     assert mock_smtp.sendmail.called
 
 
+def test_credentials_not_fetched_when_emails_disabled(mock_aws):
+  """Emailer should not reach into AWS for credentials it will never use"""
+  Emailer._instances = {}
+
+  mock_config = MockConfig()
+  mock_config.EMAILS_ENABLED = False
+
+  with patch("services.emailer.Aws", return_value=mock_aws), \
+       patch("services.emailer.config", mock_config):
+
+    emailer = Emailer()
+
+  mock_aws.get_secret.assert_not_called()
+  assert emailer._sender_email is None
+  assert emailer._delivery_recipients is None
+
+
 def test_send_email_disabled(mock_aws):
   """Test that email is not sent when EMAILS_ENABLED is False"""
   # Clear singleton instances
   Emailer._instances = {}
-  
+
   mock_config = MockConfig()
   mock_config.EMAILS_ENABLED = False
   

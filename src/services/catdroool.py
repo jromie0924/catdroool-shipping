@@ -14,6 +14,7 @@ from models.error import ErrorCollection
 from services.aws import Aws
 from services.domestics import Domestics, IGNORED_INPUT_KEY
 from services.emailer import Emailer
+from services.s3 import S3
 from services.trending import Trending
 
 
@@ -33,6 +34,7 @@ class Catdroool:
     self._error_collection = ErrorCollection()
     self._domestics = Domestics()
     self._emailer = Emailer()
+    self._s3 = S3()
     self._trending = Trending()
     
     self.send_startup_notification()
@@ -212,5 +214,10 @@ class Catdroool:
         "path": filepath_analysis_workbook
       }
     ]
-    
+
+    # Archive before emailing. The task's disk is ephemeral, so until these are somewhere
+    # durable the email is the only copy -- and a run with EMAILS_ENABLED off has no copy
+    # at all.
+    self._s3.upload_report_files(files=file_list, prefix=self._date_str)
+
     self._emailer.send_email(body_html=message, files=file_list, date_stamp=self._date_str, subject=config.DELIVERY_EMAIL_SUBJECT, email_type=EMAIL_TYPE.DELIVERY)
