@@ -73,9 +73,8 @@ catdroool-shipping/
 │       ├── dynamodb.py      # DynamoDB operations
 │       ├── emailer.py       # Email functionality
 │       ├── s3.py            # Report archive
-│       ├── stripeOps.py     # Stripe API operations
 │       └── trending.py      # Analytics and metrics
-├── tests/                   # Test suite (78 tests)
+├── tests/                   # Test suite (110 tests)
 │   ├── common/              # Common utilities tests
 │   ├── services/            # Service layer tests
 │   └── test_helpers/        # Test utilities
@@ -216,17 +215,19 @@ account fails in confusing ways rather than obvious ones.
 
 ### First deploy
 
-Create the stack with the schedule disabled, so nothing fires before an image exists:
+There are two deploy recipes, `deploy-dev` and `deploy-prod`, and they are the only way in —
+the shared implementation behind them is private precisely because its defaults are the prod
+ones, and a bare invocation would deploy production with live emails.
+
+The stack creates its own ECR repository, so on the very first deploy of an environment that
+repository is empty. Deploy with the schedule **disabled**, push an image, then re-deploy to
+enable it — an enabled schedule pointed at an empty repository fails with
+`CannotPullContainerError`:
 
 ```bash
-just deploy-infra DISABLED
-```
-
-Build and push the image, then enable the schedule:
-
-```bash
-just push
-just deploy-infra
+just deploy-prod DISABLED     # create the stack (and its ECR repo), schedule off
+just push                     # build, tag, push — app_env defaults to prod
+just deploy-prod              # re-deploy, schedule now ENABLED
 ```
 
 The deploy recipes find the network themselves: the region's default VPC, and the subnets in
@@ -235,12 +236,8 @@ a public IP and no NAT, so one would strand it on the image pull. Check what the
 with `just network`, and pin them if the default VPC is not where this belongs:
 
 ```bash
-just vpc_id=vpc-0abc123 subnet_ids=subnet-0aaa,subnet-0bbb deploy-infra
+just vpc_id=vpc-0abc123 subnet_ids=subnet-0aaa,subnet-0bbb deploy-prod
 ```
-
-The three secrets the task role is granted (`stripe_api_key`, `smarty_api_key`,
-`catdroool_email_secrets`) and the DynamoDB table are **not** created by the stack; they
-already exist and are only referenced.
 
 ### Subsequent deploys
 
@@ -248,7 +245,7 @@ already exist and are only referenced.
 just push          # build, tag, push to ECR
 ```
 
-The task definition points at the `latest` tag, so a push is enough. Run `just deploy-infra`
+The task definition points at the `latest` tag, so a push is enough. Run `just deploy-prod`
 only when the template itself changes.
 
 ### Report archive
