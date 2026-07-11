@@ -4,8 +4,9 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 cd $SCRIPT_DIR/..
 
 AWS_SECRET="$HOME/.aws_secret"
-pipenv sync
+PIPENV="$HOME/.pipenv-venv/bin/pipenv"
+$PIPENV sync
 
-pipenv run python src/app.py "$AWS_SECRET"
+$PIPENV run python src/app.py "$AWS_SECRET"
 
 # python src/app.py "$AWS_SECRET"
