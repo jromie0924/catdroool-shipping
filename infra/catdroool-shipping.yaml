@@ -1,0 +1,382 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Catdroool shipping report as a scheduled ECS Fargate task. The task runs once a month,
+  reads Stripe and Smarty over the public internet, and emails the resulting files. It sits
+  in a public subnet with a public IP and no inbound rules, which gives it egress without a
+  NAT Gateway -- a NAT would cost ~$33/month to support ~20 minutes of work.
+
+Parameters:
+  AppEnv:
+    Type: String
+    Default: prod
+    AllowedValues: [prod, dev]
+    Description: Selects the DynamoDB trending table and names the stack's resources.
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC containing the subnets below.
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: >-
+      Public subnets only. They must route 0.0.0.0/0 to an Internet Gateway; the task gets
+      a public IP and needs to reach Stripe, Smarty, Gmail, ECR and Secrets Manager.
+
+  ImageTag:
+    Type: String
+    Default: latest
+    Description: Tag of the image in the ECR repository this stack creates.
+
+  EmailsEnabled:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: >-
+      When false the task runs the full report but sends nothing. There is no other way to
+      exercise a run without emailing the real delivery recipients.
+
+  AddressValidationEnabled:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: >-
+      When false the task never builds a Smarty client, never reads smarty_api_key, and
+      never spends a lookup; addresses pass through unverified from Stripe. Set this to
+      false on any stack you intend to test against -- the Smarty allotment is capped
+      monthly and a single full run consumes several hundred verifications.
+
+  TaskCpu:
+    Type: String
+    Default: '512'
+    AllowedValues: ['256', '512', '1024', '2048']
+    Description: Fargate CPU units. The job is I/O bound; more CPU buys nothing.
+
+  TaskMemory:
+    Type: String
+    Default: '1024'
+    AllowedValues: ['512', '1024', '2048', '4096']
+    Description: Memory in MiB. Must be a legal pairing with TaskCpu.
+
+  CpuArchitecture:
+    Type: String
+    Default: ARM64
+    AllowedValues: [ARM64, X86_64]
+    Description: >-
+      Must match what `docker build` produced. ARM64 is both cheaper and the natural
+      output of building on an Apple Silicon machine; a mismatch surfaces as the task
+      dying with "exec format error".
+
+  ScheduleExpression:
+    Type: String
+    Default: cron(0 0 16 * ? *)
+    Description: Midnight on the 16th of every month, matching the retired systemd timer.
+
+  ScheduleTimezone:
+    Type: String
+    Default: America/Chicago
+    Description: >-
+      IANA timezone the cron expression is evaluated in. EventBridge Scheduler tracks DST,
+      so the run stays at local midnight year-round rather than drifting by an hour.
+
+  ScheduleState:
+    Type: String
+    Default: ENABLED
+    AllowedValues: [ENABLED, DISABLED]
+    Description: Set to DISABLED on first deploy if the image has not been pushed yet.
+
+  LogRetentionInDays:
+    Type: Number
+    Default: 30
+    Description: CloudWatch Logs retention for the task's stdout.
+
+  ReportRetentionInDays:
+    Type: Number
+    Default: 365
+    Description: How long generated reports live in S3 before expiring.
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # Image registry
+  # ---------------------------------------------------------------------------
+
+  EcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub 'catdroool-shipping-${AppEnv}'
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep the last 5 images; a monthly job has no need for history.",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 5
+                },
+                "action": { "type": "expire" }
+              }
+            ]
+          }
+
+  # ---------------------------------------------------------------------------
+  # Report archive
+  # ---------------------------------------------------------------------------
+
+  # Retained on stack deletion: the reports outlive the infrastructure that produced them,
+  # and a `cloudformation delete-stack` should not take the archive with it.
+  ReportBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub 'catdroool-shipping-reports-${AppEnv}-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-old-reports
+            Status: Enabled
+            ExpirationInDays: !Ref ReportRetentionInDays
+          - Id: abort-incomplete-uploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+
+  # ---------------------------------------------------------------------------
+  # Compute
+  # ---------------------------------------------------------------------------
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/catdroool-shipping-${AppEnv}'
+      RetentionInDays: !Ref LogRetentionInDays
+
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub 'catdroool-shipping-${AppEnv}'
+
+  TaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Outbound-only access for the Catdroool shipping report task.
+      VpcId: !Ref VpcId
+      # No SecurityGroupIngress. Security groups are stateful and default-deny on ingress,
+      # so the task's public IP is an outbound return address, not an open door.
+      SecurityGroupEgress:
+        - Description: Stripe, Smarty, ECR, Secrets Manager, DynamoDB, CloudWatch Logs.
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - Description: Gmail SMTP over implicit TLS (smtplib.SMTP_SSL).
+          IpProtocol: tcp
+          FromPort: 465
+          ToPort: 465
+          CidrIp: 0.0.0.0/0
+        - Description: DNS (UDP).
+          IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: 0.0.0.0/0
+        - Description: DNS (TCP, for responses that exceed the UDP limit).
+          IpProtocol: tcp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: 0.0.0.0/0
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Used by the ECS agent to pull the image and ship logs.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Assumed by the application code. Replaces the IAM user access keys.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: catdroool-report-access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Secrets Manager appends a random six-character suffix to every secret ARN,
+              # so the names have to be matched with a trailing wildcard.
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:stripe_api_key-*'
+                  - !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:smarty_api_key-*'
+                  - !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:catdroool_email_secrets-*'
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:Query
+                Resource: !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/catdroool_customer_counts_${AppEnv}'
+              # Write-only. The task archives reports; it never reads or deletes them.
+              - Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub '${ReportBucket.Arn}/*'
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub 'catdroool-shipping-${AppEnv}'
+      Cpu: !Ref TaskCpu
+      Memory: !Ref TaskMemory
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        CpuArchitecture: !Ref CpuArchitecture
+        OperatingSystemFamily: LINUX
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: catdroool-shipping
+          Image: !Sub '${EcrRepository.RepositoryUri}:${ImageTag}'
+          Essential: true
+          Environment:
+            - Name: APP_ENV
+              Value: !Ref AppEnv
+            # ECS does not set a region inside the container, and config.py needs one.
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+            - Name: EMAILS_ENABLED
+              Value: !Ref EmailsEnabled
+            - Name: ADDRESS_VALIDATION_ENABLED
+              Value: !Ref AddressValidationEnabled
+            - Name: REPORT_BUCKET
+              Value: !Ref ReportBucket
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: task
+
+  # ---------------------------------------------------------------------------
+  # Schedule
+  # ---------------------------------------------------------------------------
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Assumed by EventBridge Scheduler to launch the task.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: run-catdroool-task
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Granted on the family rather than !Ref TaskDefinition: the Ref resolves to a
+              # revision-pinned ARN, and a stack update would otherwise cut the schedule's
+              # permission over to the new revision in a different step than the schedule.
+              - Effect: Allow
+                Action: ecs:RunTask
+                Resource: !Sub 'arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/catdroool-shipping-${AppEnv}:*'
+                Condition:
+                  ArnEquals:
+                    ecs:cluster: !GetAtt EcsCluster.Arn
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource:
+                  - !GetAtt TaskRole.Arn
+                  - !GetAtt TaskExecutionRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: ecs-tasks.amazonaws.com
+
+  ReportSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub 'catdroool-shipping-${AppEnv}'
+      Description: Runs the Catdroool shipping report once a month.
+      State: !Ref ScheduleState
+      ScheduleExpression: !Ref ScheduleExpression
+      ScheduleExpressionTimezone: !Ref ScheduleTimezone
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      Target:
+        Arn: !GetAtt EcsCluster.Arn
+        RoleArn: !GetAtt SchedulerRole.Arn
+        RetryPolicy:
+          # A retry re-runs the whole report, which re-sends the delivery email. A failed
+          # run should be looked at, not silently repeated.
+          MaximumRetryAttempts: 0
+        EcsParameters:
+          TaskDefinitionArn: !Ref TaskDefinition
+          TaskCount: 1
+          LaunchType: FARGATE
+          PlatformVersion: LATEST
+          NetworkConfiguration:
+            AwsvpcConfiguration:
+              AssignPublicIp: ENABLED
+              Subnets: !Ref SubnetIds
+              SecurityGroups:
+                - !Ref TaskSecurityGroup
+
+Outputs:
+  EcrRepositoryUri:
+    Description: Push the image here.
+    Value: !GetAtt EcrRepository.RepositoryUri
+
+  ReportBucketName:
+    Description: Generated reports are archived here under a date prefix.
+    Value: !Ref ReportBucket
+
+  ClusterName:
+    Value: !Ref EcsCluster
+
+  TaskDefinitionArn:
+    Value: !Ref TaskDefinition
+
+  TaskSecurityGroupId:
+    Value: !Ref TaskSecurityGroup
+
+  TaskSubnetIds:
+    Description: Comma-separated, so an off-schedule `ecs run-task` can reuse them.
+    Value: !Join [',', !Ref SubnetIds]
+
+  LogGroupName:
+    Value: !Ref LogGroup
+
+  ScheduleName:
+    Value: !Ref ReportSchedule

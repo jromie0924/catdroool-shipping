@@ -44,14 +44,17 @@ def test_trending_singleton_behavior(mock_dynamodb):
   """Test that Trending follows singleton pattern"""
   # Clear singleton instances
   Trending._instances = {}
-  
-  with patch("services.trending.DynamoDB", return_value=mock_dynamodb), \
+
+  with patch("services.trending.DynamoDB", return_value=mock_dynamodb) as mock_dynamodb_class, \
        patch("services.trending.config", MockConfig):
-    
+
     trending1 = Trending()
     trending2 = Trending()
-    
+
     assert trending1 is trending2
+    # __new__ hands back the same object either way. The guard in __init__ is what stops
+    # the second construction from rebuilding the DynamoDB client on top of the first.
+    assert mock_dynamodb_class.call_count == 1
 
 
 def test_build_trending_item():

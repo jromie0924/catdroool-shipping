@@ -33,13 +33,13 @@ pipenv shell
 
 ## Test Suite Overview
 
-The test suite contains **78 tests** covering:
+The test suite contains **110 tests** covering:
 - Service layer modules
 - Common utilities
 - Integration points
 
 ### Test Statistics
-- **Total Tests**: 78
+- **Total Tests**: 110
 - **Test Files**: 11
 - **Pass Rate**: 100%
 - **Execution Time**: ~0.5 seconds

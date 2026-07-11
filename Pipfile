@@ -4,7 +4,10 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-stripe = "*"
+# Pinned to the major version. StripeObject stopped deriving from dict, which silently removed
+# .get() from every object the SDK returns -- the kind of break an unpinned "*" lets into a
+# container build without anyone touching the code.
+stripe = "~=15.3"
 boto3 = "*"
 psycopg2-binary = "*"
 requests = "*"

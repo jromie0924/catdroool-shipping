@@ -1,0 +1,32 @@
+.git/
+.github/
+.claude/
+.vscode/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+
+# Everything the report produces, plus the local scratch space.
+output/
+logs/
+cache/
+temp-files/
+Smarty-samples/
+*.csv
+*.json
+*.xlsx
+*.log
+*.tar.gz
+
+# Not needed at runtime.
+tests/
+scripts/
+system_files/
+sql/
+infra/
+justfile
+pyproject.toml
+notes.txt
+mods.sql
+*.md
+.DS_Store
