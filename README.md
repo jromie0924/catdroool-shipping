@@ -75,14 +75,13 @@ catdroool-shipping/
 │       ├── s3.py            # Report archive
 │       ├── stripeOps.py     # Stripe API operations
 │       └── trending.py      # Analytics and metrics
-├── tests/                   # Test suite (75 tests)
+├── tests/                   # Test suite (78 tests)
 │   ├── common/              # Common utilities tests
 │   ├── services/            # Service layer tests
 │   └── test_helpers/        # Test utilities
 ├── infra/
 │   └── catdroool-shipping.yaml  # CloudFormation: ECR, ECS, IAM, schedule
 ├── html/                    # Email templates
-├── sql/                     # SQL queries
 ├── output/                  # Generated reports
 ├── cache/                   # Cached data
 ├── logs/                    # Application logs

@@ -33,13 +33,13 @@ pipenv shell
 
 ## Test Suite Overview
 
-The test suite contains **75 tests** covering:
+The test suite contains **78 tests** covering:
 - Service layer modules
 - Common utilities
 - Integration points
 
 ### Test Statistics
-- **Total Tests**: 75
+- **Total Tests**: 78
 - **Test Files**: 11
 - **Pass Rate**: 100%
 - **Execution Time**: ~0.5 seconds
@@ -51,7 +51,7 @@ tests/
 ├── common/                      # Common utilities tests (13 tests)
 │   ├── test_singleton.py        # Singleton pattern tests (3)
 │   └── test_utils.py            # Utility function tests (10)
-├── services/                    # Service layer tests (62 tests)
+├── services/                    # Service layer tests (65 tests)
 │   ├── test_authorization.py    # USPS API authorization (1)
 │   ├── test_aws.py              # AWS operations (14)
 │   ├── test_catdroool.py        # Core business logic (5)
@@ -60,7 +60,6 @@ tests/
 │   ├── test_domestics.py        # Domestic shipping (2)
 │   ├── test_dynamodb.py         # DynamoDB operations (7)
 │   ├── test_emailer.py          # Email functionality (9)
-│   ├── test_stripeOps.py        # Stripe operations (6)
 │   └── test_trending.py         # Analytics/trending (8)
 └── test_helpers/                # Test utilities
     └── test_helper.py           # Mock data and helpers
@@ -82,12 +81,6 @@ tests/
 - Query operations (`get_latest_customer_metrics`)
 - Error handling for database failures
 - Empty result handling
-
-#### Stripe Operations (`test_stripeOps.py`) - 6 tests
-- Product retrieval and filtering
-- Subscription pagination
-- Catdroool-specific product filtering
-- Rate limiting behavior
 
 #### Email (`test_emailer.py`) - 9 tests
 - SMTP connection and authentication
