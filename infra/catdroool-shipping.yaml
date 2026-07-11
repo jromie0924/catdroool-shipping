@@ -73,8 +73,10 @@ Parameters:
 
   ScheduleTimezone:
     Type: String
-    Default: UTC
-    Description: IANA timezone the cron expression is evaluated in, e.g. America/Chicago.
+    Default: America/Chicago
+    Description: >-
+      IANA timezone the cron expression is evaluated in. EventBridge Scheduler tracks DST,
+      so the run stays at local midnight year-round rather than drifting by an hour.
 
   ScheduleState:
     Type: String

@@ -71,7 +71,14 @@ class Domestics(Singleton):
     self._aws = Aws()
     # Building the client reads the credentials out of AWS, so skip it entirely when
     # address validation is turned off.
-    self._client = self._build_client() if config.ADDRESS_VALIDATION_ENABLED else None
+    if config.ADDRESS_VALIDATION_ENABLED:
+      self._client = self._build_client()
+    else:
+      self._client = None
+      # Said once, up front. Otherwise the only trace of this is validate_address returning
+      # an empty dict for every customer, which reads like several hundred failures.
+      logger.warning("Address validation is disabled. Stripe addresses are used verbatim: "
+                     "unverified, un-normalized, and not safe to mail from.")
 
   def _load_credentials(self) -> StaticCredentials:
     secret = self._aws.get_secret(key=config.SMARTY_API_KEY, type=str)

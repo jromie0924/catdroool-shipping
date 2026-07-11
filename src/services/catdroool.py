@@ -47,19 +47,25 @@ class Catdroool:
     
   def generate_report(self):
     logger.info("Generating report...")
-    products = stripe.Product.search(api_key=self._stripe_api_key, query=f"name~'{config.PRODUCT_FILTER}'")
+    # Everything the SDK hands back is a StripeObject, which supports obj['k'] and obj.k but
+    # NOT obj.get('k') -- StripeObject stopped deriving from dict, so .get() falls through to
+    # __getattr__ and raises AttributeError. Convert to plain dicts at the boundary (to_dict()
+    # is recursive) and the rest of this module, and utils.populate_shipment_record, keep the
+    # .get() semantics they rely on for optional fields like line2.
+    products = [p.to_dict() for p in stripe.Product.search(api_key=self._stripe_api_key,
+                                                           query=f"name~'{config.PRODUCT_FILTER}'")]
     catdroool_product_codes_domestic = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() not in p.get('name').lower()]
     catdroool_product_codes_intl = [p.get('id') for p in products if config.INTERNATIONAL_FILTER.lower() in p.get('name').lower()]
 
     subscriptions = []
     subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active')
-    subscriptions.extend(subs['data'])
+    subscriptions.extend(s.to_dict() for s in subs['data'])
     while subs.has_more:
       time.sleep(0.05) # rate limit
       starts_after = subs['data'][-1]['id']
       subs = stripe.Subscription.list(api_key=self._stripe_api_key, status='active', starting_after=starts_after)
-      subscriptions.extend(subs['data'])
-      
+      subscriptions.extend(s.to_dict() for s in subs['data'])
+
 
     customers_domestic: list[dict] = []
     customers_intl: list[dict] = []
@@ -70,12 +76,12 @@ class Catdroool:
       if len(product_codes_domestic):
         cust_id = sub['customer']
         customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
-        customers_domestic.append(customer)
+        customers_domestic.append(customer.to_dict())
         time.sleep(0.05) # rate limit
       if len(product_codes_intl):
         cust_id = sub.get('customer')
         customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
-        customers_intl.append(customer)
+        customers_intl.append(customer.to_dict())
 
     # with open('customers_domestic.json', 'r') as file:
     #   customers_domestic = json.load(file)
@@ -112,7 +118,12 @@ class Catdroool:
                                                                  zip=shipping_info.get("postal_code"),
                                                                  state=shipping_info.get("state"))
 
-        logger.debug(f"Validated address: {usps_verified_address}")
+        # Empty when validation is disabled, or when Smarty itself errored. Either way it is
+        # not a failure to handle here: populate_shipment_record falls back to the Stripe
+        # address field by field.
+        if usps_verified_address:
+          logger.debug(f"Validated address: {usps_verified_address}")
+
         if usps_verified_address.get(IGNORED_INPUT_KEY):
           logger.error(f"Part of the address for customer {customer['id']} was ignored during validation.")
           self._error_collection.add_new(customer_id=customer['id'],
