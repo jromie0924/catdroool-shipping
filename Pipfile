@@ -17,6 +17,7 @@ Xlsxwriter = "*"
 smartystreets_python_sdk = "*"
 dateparser = "*"
 pyspellchecker = "*"
+tzdata = "*"
 
 [dev-packages]
 

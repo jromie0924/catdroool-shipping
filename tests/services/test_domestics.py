@@ -4,7 +4,6 @@ import pytest
 import sys
 
 from common.exceptions import AddressNotFoundError, CredentialsError, RateLimitError
-from common.singleton import Singleton
 from config import config
 from datetime import datetime, timedelta, timezone
 from email.utils import format_datetime
@@ -19,13 +18,6 @@ from tests.test_helpers import test_helper
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
-@pytest.fixture(autouse=True)
-def reset_singleton():
-  # Domestics is a Singleton, so without this each test would reuse the first
-  # test's instance and its mocked Smarty client.
-  Singleton._instances = {}
-  yield
-  Singleton._instances = {}
 
 def secret_string(value):
   return json.dumps({config.SMARTY_API_KEY: value})

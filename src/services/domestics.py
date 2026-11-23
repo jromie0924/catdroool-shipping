@@ -65,9 +65,6 @@ class RetryAfterSender:
 
 class Domestics(Singleton):
   def __init__(self):
-    if hasattr(self, '_initialized'):
-      return None
-    self._initialized = True
     self._aws = Aws()
     # Building the client reads the credentials out of AWS, so skip it entirely when
     # address validation is turned off.

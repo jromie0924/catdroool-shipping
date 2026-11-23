@@ -20,11 +20,6 @@ class MockConfigNoBucket:
   REPORT_BUCKET = ""
 
 
-@pytest.fixture(autouse=True)
-def clear_singleton():
-  S3._instances = {}
-  yield
-  S3._instances = {}
 
 
 @pytest.fixture

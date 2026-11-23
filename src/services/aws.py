@@ -8,9 +8,6 @@ logger = logging.getLogger(config.APP_NAME)
 
 class Aws(Singleton):
   def __init__(self):
-    if hasattr(self, '_initialized'):
-      return None
-    self._initialized = True
     self._region = config.AWS_REGION
 
   # boto3 resolves credentials on its own: the ECS task role in Fargate (via the endpoint

@@ -11,9 +11,6 @@ logger = logging.getLogger(config.APP_NAME)
 
 class DynamoDB(Singleton):
   def __init__(self):
-    if hasattr(self, "_initialized"):
-      return None
-    self._initialized = True
     aws = Aws()
     self.dynamodb_resource = aws.dynamodb_resource
   
