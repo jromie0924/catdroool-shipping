@@ -5,7 +5,7 @@ class ErrorCollection:
   def __init__(self):
     self.errors: list[dict] = []
   
-  def add_new(self, customer_id: str, issue: str, nationality: str):
+  def add_new(self, customer_id: str, issue: str, nationality: str = "N/A"):
     self.errors.append({
       "Customer ID": customer_id,
       "Issue": issue,
