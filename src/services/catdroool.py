@@ -1,4 +1,5 @@
 import csv
+import dateparser
 import json
 import logging
 import os
@@ -16,9 +17,48 @@ from services.domestics import Domestics, IGNORED_INPUT_KEY
 from services.emailer import Emailer
 from services.s3 import S3
 from services.trending import Trending
+from spellchecker import SpellChecker
 
 
 logger = logging.getLogger(config.APP_NAME)
+
+MONTHS = {
+  'JANUARY': 1,
+  'JAN': 1,
+  'FEBRUARY': 2,
+  'FEB': 2,
+  'MARCH': 3,
+  'MAR': 3,
+  'APRIL': 4,
+  'APR': 4,
+  'MAY': 5,
+  'JUNE': 6,
+  'JUN': 6,
+  'JULY': 7,
+  'JUL': 7,
+  'AUGUST': 8,
+  'AUG': 8,
+  'SEPTEMBER': 9,
+  'SEP': 9,
+  'SEPT': 9,
+  'OCTOBER': 10,
+  'OCT': 10,
+  'NOVEMBER': 11,
+  'NOV': 11,
+  'DECEMBER': 12,
+  'DEC': 12
+}
+
+# Out of the box, dateparser fills any part the input lacks from today's date, so "N/A" or "13"
+# came back as the current month -- and the report matches on the current month, so those
+# customers would be flagged every run. Each setting closes one route to that:
+DATEPARSER_LANGUAGES = ['en']  # "na" auto-detects as Norwegian "nå" (now)
+DATEPARSER_SETTINGS = {
+  'REQUIRE_PARTS': ['month'],                      # None instead of borrowing today's month
+  'PARSERS': ['custom-formats', 'absolute-time'],  # no relative phrases: "today", "next month"
+}
+UNPARSEABLE = -2
+NO_BDAY = -1
 
 def sort_by_field_alphabetically(mailing_list: list[dict]):
   field = config.SORT_FIELD
@@ -44,6 +84,35 @@ class Catdroool:
       message = f.read()
     
     self._emailer.send_email(body_html=message, date_stamp=self._datetime_str, subject=config.NOTIFICATION_EMAIL_SUBJECT, email_type=EMAIL_TYPE.NOTIFICATION)
+  
+  def get_birthday_month(self, customer: stripe.Customer) -> int:
+    checkout_sessions = stripe.checkout.Session.list(api_key=self._stripe_api_key, customer=customer.id, status='complete')
+    if not checkout_sessions.data or not len(checkout_sessions.data):
+        return NO_BDAY
+    
+    session = checkout_sessions.data[0]
+    custom_fields = session.custom_fields
+    try:
+      birthday_str = [value.text.value for value in custom_fields if value.key == config.BIRTHDAY_FIELD_KEY][0]
+    except IndexError:
+      return NO_BDAY
+
+    # Stripe sends None for an optional text field the customer left blank.
+    if not birthday_str or not birthday_str.strip():
+      return NO_BDAY
+
+    date = dateparser.parse(birthday_str, languages=DATEPARSER_LANGUAGES, settings=DATEPARSER_SETTINGS)
+    if date:
+      return date.month
+    spell = SpellChecker()
+    words = birthday_str.split(' ')
+    for word in words:
+      corrected = (spell.correction(word) or '').upper()
+      if corrected in MONTHS:
+        return MONTHS[corrected]
+
+    return UNPARSEABLE
+    
     
   def generate_report(self):
     logger.info("Generating report...")
@@ -68,6 +137,7 @@ class Catdroool:
 
 
     customers_domestic: list[dict] = []
+    birthdays: list[dict] = []
     customers_intl: list[dict] = []
 
     for sub in subscriptions:
@@ -82,6 +152,18 @@ class Catdroool:
         cust_id = sub.get('customer')
         customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
         customers_intl.append(customer.to_dict())
+      
+      bday_month = self.get_birthday_month(customer=customer)
+      if bday_month == dt.now().month:
+        bday = {
+          'name': customer.name,
+          'email': customer.email
+        }
+        birthdays.append(bday)
+      elif bday_month == UNPARSEABLE:
+        message = "Customer's birthday is not parseable."
+        logger.error(message)
+        self._error_collection.add_new(customer_id=cust_id, issue=f"{message} It should be updated in their checkout session's 'birthday' custom field.")
 
     # with open('customers_domestic.json', 'r') as file:
     #   customers_domestic = json.load(file)
@@ -102,6 +184,8 @@ class Catdroool:
     filepath_domestic = f'{directory}{filename_domestic}'
     filepath_intl = f'{directory}{filename_intl}'
     filepath_error = f'{directory}{filename_error}'
+    filename_bday = f'Catdroool-birthday-list_{self._date_str}.csv'
+    filepath_bday = f'{directory}{filename_bday}'
     filename_analysis_workbook = f'Catdroool-customer-analysis_{self._date_str}.xlsx'
     filepath_analysis_workbook = f'{directory}{filename_analysis_workbook}'
     keys_domestic: list[str] = []
@@ -191,6 +275,11 @@ class Catdroool:
       writer.writeheader()
       writer.writerows(sort_by_field_alphabetically(shipping_records_intl))
       
+    with open(filepath_bday, 'w') as f:
+      writer = csv.DictWriter(f, fieldnames=["name", "email"])
+      writer.writeheader()
+      writer.writerows(birthdays)
+      
     with open(filepath_error, 'w') as file:
       writer = csv.DictWriter(file, fieldnames=ErrorCollection.FIELD_NAMES)
       writer.writeheader()
@@ -223,6 +312,10 @@ class Catdroool:
       {
         "name": filename_analysis_workbook,
         "path": filepath_analysis_workbook
+      },
+      {
+        "name": filename_bday,
+        "path": filepath_bday
       }
     ]
 

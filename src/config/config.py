@@ -76,3 +76,5 @@ NOTIFICATION_EMAIL_SUBJECT = "Catdroool Shipping Startup Notification"
 #DynamoDB
 CATDROOOL_TRENDING_DYNAMO_PARTITION_KEY="month"
 CATDROOOL_TRENDING_DYNAMODB_TABLE = "catdroool_customer_counts_prod" if ENV == "prod" else "catdroool_customer_counts_dev"
+
+BIRTHDAY_FIELD_KEY = "birthdaymonthsowecansendyouagift"
