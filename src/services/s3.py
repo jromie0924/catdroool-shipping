@@ -10,9 +10,6 @@ logger = logging.getLogger(config.APP_NAME)
 
 class S3(Singleton):
   def __init__(self):
-    if hasattr(self, "_initialized"):
-      return None
-    self._initialized = True
     self._client = Aws().s3_client
     self._bucket = config.REPORT_BUCKET
 

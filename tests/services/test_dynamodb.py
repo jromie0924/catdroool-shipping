@@ -40,9 +40,6 @@ def mock_table():
 
 def test_dynamodb_init(mock_aws):
   """Test DynamoDB initialization"""
-  # Clear singleton instances
-  DynamoDB._instances = {}
-  
   with patch("services.dynamodb.Aws", return_value=mock_aws), \
        patch("services.dynamodb.config", MockConfig):
     
@@ -52,9 +49,6 @@ def test_dynamodb_init(mock_aws):
 
 def test_dynamodb_singleton_behavior(mock_aws):
   """Test that DynamoDB follows singleton pattern"""
-  # Clear singleton instances
-  DynamoDB._instances = {}
-  
   with patch("services.dynamodb.Aws", return_value=mock_aws), \
        patch("services.dynamodb.config", MockConfig):
     
@@ -66,9 +60,6 @@ def test_dynamodb_singleton_behavior(mock_aws):
 
 def test_put_item_success(mock_aws, mock_table):
   """Test successfully putting an item into DynamoDB"""
-  # Clear singleton instances
-  DynamoDB._instances = {}
-  
   mock_aws.dynamodb_resource.Table.return_value = mock_table
   
   with patch("services.dynamodb.Aws", return_value=mock_aws), \
@@ -83,9 +74,6 @@ def test_put_item_success(mock_aws, mock_table):
 
 def test_put_item_exception(mock_aws):
   """Test put_item handles exceptions gracefully"""
-  # Clear singleton instances
-  DynamoDB._instances = {}
-  
   mock_table = MagicMock()
   mock_table.put_item.side_effect = Exception("DynamoDB Error")
   mock_aws.dynamodb_resource.Table.return_value = mock_table
@@ -100,9 +88,6 @@ def test_put_item_exception(mock_aws):
 
 def test_get_latest_customer_metrics_success(mock_aws, mock_table):
   """Test successfully retrieving latest customer metrics"""
-  # Clear singleton instances
-  DynamoDB._instances = {}
-  
   mock_aws.dynamodb_resource.Table.return_value = mock_table
   
   with patch("services.dynamodb.Aws", return_value=mock_aws), \
@@ -119,9 +104,6 @@ def test_get_latest_customer_metrics_success(mock_aws, mock_table):
 
 def test_get_latest_customer_metrics_no_items(mock_aws):
   """Test get_latest_customer_metrics when no items are returned"""
-  # Clear singleton instances
-  DynamoDB._instances = {}
-  
   mock_table = MagicMock()
   mock_table.query.return_value = {"Items": []}
   mock_aws.dynamodb_resource.Table.return_value = mock_table
@@ -138,9 +120,6 @@ def test_get_latest_customer_metrics_no_items(mock_aws):
 
 def test_get_latest_customer_metrics_exception(mock_aws):
   """Test get_latest_customer_metrics handles exceptions gracefully"""
-  # Clear singleton instances
-  DynamoDB._instances = {}
-  
   mock_table = MagicMock()
   mock_table.query.side_effect = Exception("DynamoDB Error")
   mock_aws.dynamodb_resource.Table.return_value = mock_table

@@ -49,7 +49,7 @@ The test suite contains **110 tests** covering:
 ```
 tests/
 ├── common/                      # Common utilities tests (13 tests)
-│   ├── test_singleton.py        # Singleton pattern tests (3)
+│   ├── test_singleton.py        # Singleton pattern tests (6)
 │   └── test_utils.py            # Utility function tests (10)
 ├── services/                    # Service layer tests (65 tests)
 │   ├── test_authorization.py    # USPS API authorization (1)
@@ -119,10 +119,12 @@ tests/
 
 ### Common Utilities
 
-#### Singleton (`test_singleton.py`) - 3 tests
+#### Singleton (`test_singleton.py`) - 6 tests
 - Single instance enforcement
-- State sharing across instances
-- Multiple singleton subclasses
+- `__init__` runs only once
+- Separate instances per subclass (including subclasses of a singleton)
+- Nested construction doesn't deadlock (reentrant lock)
+- Concurrent first construction builds one instance
 
 #### Utils (`test_utils.py`) - 10 tests
 - Time difference calculations
@@ -161,13 +163,11 @@ def mock_aws():
 
 ### Singleton Testing
 
-Services using the Singleton pattern require clearing instances:
-```python
-def test_example():
-    # Clear singleton instances before test
-    MyService._instances = {}
-    # ... test code
-```
+Singletons are reset automatically. `SingletonMeta` caches each instance on the class's own
+`_instance`, and the autouse `reset_singletons` fixture in `tests/conftest.py` clears it on
+every `Singleton` subclass before and after each test, so there's nothing to do in the test
+itself. The fixture finds subclasses at runtime, so new singletons are covered without
+registering them.
 
 ## Writing New Tests
 
@@ -238,10 +238,11 @@ pip install -r requirements.txt
 ```
 
 **Singleton test failures**
-```python
-# Clear singleton instances before each test
-MyService._instances = {}
-```
+
+Tests that pass alone but fail together usually mean a singleton leaked between tests, carrying
+the first test's mocks with it. Check that `tests/conftest.py` is being picked up (it must sit
+at the root of `tests/`). Resetting `_instances` does nothing; that belonged to the old
+implementation.
 
 **Mock not working**
 ```python

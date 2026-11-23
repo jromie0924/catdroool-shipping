@@ -17,9 +17,6 @@ logger = logging.getLogger(config.APP_NAME)
 
 class Emailer(Singleton):
   def __init__(self):
-    if hasattr(self, "_initialized"):
-      return None
-    self._initialized = True
     self._aws = Aws()
     self._sender_email: str = None
     self._sender_password: str = None

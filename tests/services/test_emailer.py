@@ -37,9 +37,6 @@ def mock_smtp():
 
 def test_emailer_init(mock_aws):
   """Test Emailer initialization"""
-  # Clear singleton instances
-  Emailer._instances = {}
-  
   with patch("services.emailer.Aws", return_value=mock_aws), \
        patch("services.emailer.config", MockConfig):
     
@@ -53,9 +50,6 @@ def test_emailer_init(mock_aws):
 
 def test_emailer_singleton_behavior(mock_aws):
   """Test that Emailer follows singleton pattern"""
-  # Clear singleton instances
-  Emailer._instances = {}
-  
   with patch("services.emailer.Aws", return_value=mock_aws), \
        patch("services.emailer.config", MockConfig):
     
@@ -67,9 +61,6 @@ def test_emailer_singleton_behavior(mock_aws):
 
 def test_emailer_init_exception(mock_aws):
   """Test Emailer handles initialization exception gracefully"""
-  # Clear singleton instances
-  Emailer._instances = {}
-  
   mock_aws.get_secret.side_effect = Exception("AWS Error")
   
   with patch("services.emailer.Aws", return_value=mock_aws), \
@@ -81,9 +72,6 @@ def test_emailer_init_exception(mock_aws):
 
 def test_send_email_delivery_type(mock_aws, mock_smtp):
   """Test sending a delivery email"""
-  # Clear singleton instances
-  Emailer._instances = {}
-  
   with patch("services.emailer.Aws", return_value=mock_aws), \
        patch("services.emailer.config", MockConfig), \
        patch("services.emailer.smtplib.SMTP_SSL", return_value=mock_smtp):
@@ -104,9 +92,6 @@ def test_send_email_delivery_type(mock_aws, mock_smtp):
 
 def test_send_email_notification_type(mock_aws, mock_smtp):
   """Test sending a notification email"""
-  # Clear singleton instances
-  Emailer._instances = {}
-  
   with patch("services.emailer.Aws", return_value=mock_aws), \
        patch("services.emailer.config", MockConfig), \
        patch("services.emailer.smtplib.SMTP_SSL", return_value=mock_smtp):
@@ -125,9 +110,6 @@ def test_send_email_notification_type(mock_aws, mock_smtp):
 
 def test_send_email_with_attachments(mock_aws, mock_smtp):
   """Test sending an email with file attachments"""
-  # Clear singleton instances
-  Emailer._instances = {}
-  
   file_content = b"test file content"
   
   with patch("services.emailer.Aws", return_value=mock_aws), \
@@ -154,9 +136,6 @@ def test_send_email_with_attachments(mock_aws, mock_smtp):
 
 def test_send_email_attachment_failure(mock_aws, mock_smtp):
   """Test that email sending continues even if attachment fails"""
-  # Clear singleton instances
-  Emailer._instances = {}
-  
   with patch("services.emailer.Aws", return_value=mock_aws), \
        patch("services.emailer.config", MockConfig), \
        patch("services.emailer.smtplib.SMTP_SSL", return_value=mock_smtp), \
@@ -180,8 +159,6 @@ def test_send_email_attachment_failure(mock_aws, mock_smtp):
 
 def test_credentials_not_fetched_when_emails_disabled(mock_aws):
   """Emailer should not reach into AWS for credentials it will never use"""
-  Emailer._instances = {}
-
   mock_config = MockConfig()
   mock_config.EMAILS_ENABLED = False
 
@@ -197,9 +174,6 @@ def test_credentials_not_fetched_when_emails_disabled(mock_aws):
 
 def test_send_email_disabled(mock_aws):
   """Test that email is not sent when EMAILS_ENABLED is False"""
-  # Clear singleton instances
-  Emailer._instances = {}
-
   mock_config = MockConfig()
   mock_config.EMAILS_ENABLED = False
   
@@ -221,9 +195,6 @@ def test_send_email_disabled(mock_aws):
 
 def test_send_email_smtp_exception(mock_aws, mock_smtp):
   """Test that email sending handles SMTP exceptions gracefully"""
-  # Clear singleton instances
-  Emailer._instances = {}
-  
   mock_smtp.sendmail.side_effect = Exception("SMTP Error")
   
   with patch("services.emailer.Aws", return_value=mock_aws), \

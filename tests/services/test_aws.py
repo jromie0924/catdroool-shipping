@@ -19,11 +19,6 @@ def mock_config():
   return MockConfig
 
 
-@pytest.fixture(autouse=True)
-def clear_singleton():
-  Aws._instances = {}
-  yield
-  Aws._instances = {}
 
 
 @pytest.fixture
