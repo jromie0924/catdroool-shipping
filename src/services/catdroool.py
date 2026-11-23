@@ -145,7 +145,7 @@ class Catdroool:
       product_codes_intl = [i['plan']['product'] for i in sub['items']['data'] if i['plan']['product'] in catdroool_product_codes_intl]
       if len(product_codes_domestic):
         cust_id = sub['customer']
-        customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)        
+        customer = stripe.Customer.retrieve(api_key=self._stripe_api_key, id=cust_id)
         customers_domestic.append(customer.to_dict())
         time.sleep(0.05) # rate limit
       if len(product_codes_intl):
