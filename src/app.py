@@ -4,10 +4,21 @@ import sys
 
 from logging.handlers import RotatingFileHandler
 from datetime import datetime as dt
+from zoneinfo import ZoneInfo
 from services.catdroool import Catdroool
 from config import config
 
 now = dt.now()
+
+CENTRAL = ZoneInfo("America/Chicago")
+
+
+class CentralFormatter(logging.Formatter):
+  """Stamps log lines in Central time (CST/CDT) regardless of host. The Fargate container has
+  no TZ set and would otherwise log in UTC."""
+
+  def formatTime(self, record, datefmt=None):
+    return dt.fromtimestamp(record.created, CENTRAL).strftime(datefmt or '%Y-%m-%d %H:%M:%S %Z')
 
 def _init_logger():
   logger = logging.getLogger(config.APP_NAME)
@@ -21,7 +32,7 @@ def _init_logger():
   os.makedirs(dir, exist_ok=True)
   
   # Log formatter
-  formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] [%(module)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+  formatter = CentralFormatter('[%(asctime)s] [%(levelname)s] [%(module)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S %Z')
 
   # Stream handler (sys.stdout) for console output
   stream_handler = logging.StreamHandler(sys.stdout)
