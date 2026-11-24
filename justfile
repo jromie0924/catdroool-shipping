@@ -208,6 +208,37 @@ run-now:
     --launch-type FARGATE \
     --network-configuration "awsvpcConfiguration={subnets=[$subnets],securityGroups=[$sg],assignPublicIp=ENABLED}"
 
+# EMAILS_ENABLED and ADDRESS_VALIDATION_ENABLED are hardcoded to false below, on purpose, and
+# deliberately ignore the justfile variables of the same name. Both default to true in
+# config.py, so dropping either flag from the `docker run` would email the real recipients or
+# spend Smarty lookups out of the capped monthly allotment. Do not make them overridable here --
+# a real run belongs on Fargate via deploy-prod.
+#
+# APP_ENV is hardcoded to dev for the same reason: config.py defaults to prod, which would read
+# and write the prod trending table. With dev, the run reads and writes
+# catdroool_customer_counts_dev, the same scratch table the dev stack uses. Stripe is still
+# called for real (read-only).
+#
+# REPORT_BUCKET is left unset, so nothing goes to S3; the report lands in ./output/ instead.
+#
+# Build and run the image locally. NO EMAILS, NO SMARTY LOOKUPS, dev DynamoDB table.
+run-local:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  docker build --pull --platform {{platform}} -t catdroool-shipping-local .
+  mkdir -p output
+  echo "Running locally: APP_ENV=dev, EMAILS_ENABLED=false, ADDRESS_VALIDATION_ENABLED=false"
+  # The profile is an `aws login` session, which boto3 in the container cannot read from
+  # ~/.aws, so hand it short-lived keys. --env-file keeps them out of `ps`.
+  docker run --rm --platform {{platform}} \
+    --env-file <(aws --profile {{profile}} configure export-credentials --format env-no-export) \
+    -e AWS_REGION={{region}} \
+    -e APP_ENV=dev \
+    -e EMAILS_ENABLED=false \
+    -e ADDRESS_VALIDATION_ENABLED=false \
+    -v "$PWD/output:/app/output" \
+    catdroool-shipping-local
+
 # Follow the task's stdout.
 logs:
   aws --profile {{profile}} logs tail /ecs/catdroool-shipping-{{app_env}} --region {{region}} --follow
