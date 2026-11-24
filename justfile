@@ -183,7 +183,9 @@ push:
   registry="${account}.dkr.ecr.{{region}}.amazonaws.com"
   aws --profile {{profile}} ecr get-login-password --region {{region}} \
     | docker login --username AWS --password-stdin "$registry"
-  docker build --platform {{platform}} -t {{ecr_repo}}:latest .
+  # --pull: the base tag floats, and without it Docker reuses whatever python:3.13-slim is
+  # cached locally -- so OS security fixes (e.g. Debian libssl3) never reach the image.
+  docker build --pull --platform {{platform}} -t {{ecr_repo}}:latest .
   docker tag {{ecr_repo}}:latest "$registry/{{ecr_repo}}:latest"
   docker push "$registry/{{ecr_repo}}:latest"
 
