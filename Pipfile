@@ -9,7 +9,6 @@ name = "pypi"
 # container build without anyone touching the code.
 stripe = "~=15.3"
 boto3 = "*"
-psycopg2-binary = "*"
 requests = "*"
 pytest = "*"
 ratelimit = "*"
@@ -20,6 +19,7 @@ pyspellchecker = "*"
 tzdata = "*"
 
 [dev-packages]
+pipdeptree = "*"
 
 [requires]
 python_version = "3.13"
