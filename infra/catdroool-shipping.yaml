@@ -84,16 +84,6 @@ Parameters:
     AllowedValues: [ENABLED, DISABLED]
     Description: Set to DISABLED on first deploy if the image has not been pushed yet.
 
-  LogRetentionInDays:
-    Type: Number
-    Default: 30
-    Description: CloudWatch Logs retention for the task's stdout.
-
-  ReportRetentionInDays:
-    Type: Number
-    Default: 365
-    Description: How long generated reports live in S3 before expiring.
-
 Resources:
 
   # ---------------------------------------------------------------------------
@@ -148,7 +138,7 @@ Resources:
         Rules:
           - Id: expire-old-reports
             Status: Enabled
-            ExpirationInDays: !Ref ReportRetentionInDays
+            ExpirationInDays: 365
           - Id: abort-incomplete-uploads
             Status: Enabled
             AbortIncompleteMultipartUpload:
@@ -162,7 +152,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/ecs/catdroool-shipping-${AppEnv}'
-      RetentionInDays: !Ref LogRetentionInDays
+      RetentionInDays: 365
 
   EcsCluster:
     Type: AWS::ECS::Cluster
