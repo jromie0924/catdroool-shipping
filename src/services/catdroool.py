@@ -112,8 +112,7 @@ class Catdroool:
         return MONTHS[corrected]
 
     return UNPARSEABLE
-    
-    
+  
   def generate_report(self):
     logger.info("Generating report...")
     # Everything the SDK hands back is a StripeObject, which supports obj['k'] and obj.k but
@@ -173,7 +172,6 @@ class Catdroool:
 
     logger.info(f"Number of domestic customers retireved from Stripe: {len(customers_domestic)}")
     logger.info(f"Number of international customers retireved from Stripe: {len(customers_intl)}")
-
 
     shipping_records_domestic: list[dict] = []
     shipping_records_intl: list[dict] = []
@@ -241,7 +239,6 @@ class Catdroool:
 
     logger.info(f"Records written to {filename_domestic}")
 
-
     for customer in customers_intl:
       try:
         shipping_info = customer['shipping']['address'] if customer['shipping'] and customer['shipping']['address'] else {}
@@ -294,7 +291,6 @@ class Catdroool:
                                                       customers_intl=shipping_records_intl)
 
     Trending.build_metrics_comparison_report(filename=filepath_analysis_workbook, comparison_obj=analysis)
-    
     
     file_list = [
       {
